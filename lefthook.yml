@@ -1,0 +1,15 @@
+# Git hooks, installed by `pnpm install` (root "prepare" script runs `lefthook install`).
+# commit-msg: rejects AI attribution in the commit message.
+# pre-push:   re-checks author, committer and message of every local commit
+#             that is not on the remote yet.
+# More hooks (formatting, lint, secret scan) are added with feature F01.
+
+commit-msg:
+  commands:
+    commit-hygiene:
+      run: node scripts/commit-hygiene.mjs msg {1}
+
+pre-push:
+  commands:
+    commit-hygiene:
+      run: node scripts/commit-hygiene.mjs unpushed

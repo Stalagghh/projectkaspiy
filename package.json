@@ -1,0 +1,18 @@
+{
+  "name": "ecoshield-caspian",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Eco-Shield of the Caspian: early-warning platform for Caspian protected areas (hackathon MVP)",
+  "packageManager": "pnpm@12.18.0",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "prepare": "lefthook install",
+    "test:hygiene": "node --test \"scripts/**/*.test.mjs\"",
+    "hygiene:unpushed": "node scripts/commit-hygiene.mjs unpushed"
+  },
+  "devDependencies": {
+    "lefthook": "2.2.2"
+  }
+}

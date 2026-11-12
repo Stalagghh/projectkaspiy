@@ -1,0 +1,52 @@
+# Fails a pull request if any of its commits was authored or committed by an identity
+# other than the project identity, or if a commit message, the PR title or the PR
+# description contains AI attribution. Rules: CONTRIBUTING.md, "Авторство коммитов".
+name: commit-hygiene
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: commit-hygiene-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  commit-hygiene:
+    name: commit-hygiene
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out the pull request head with full history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - name: Self-test of the checker
+        run: node --test "scripts/**/*.test.mjs"
+
+      - name: Check authors, committers and messages of the PR commits
+        env:
+          # The project identity (a GitHub no-reply address, public by design).
+          HYGIENE_NAME: Stalagghh
+          HYGIENE_EMAIL: 101994665+Stalagghh@users.noreply.github.com
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/commit-hygiene.mjs range "$BASE_SHA..$HEAD_SHA"
+
+      - name: Check the PR title and description
+        env:
+          # Passed through the environment, never interpolated into the script.
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: printf '%s\n\n%s\n' "$PR_TITLE" "$PR_BODY" | node scripts/commit-hygiene.mjs text

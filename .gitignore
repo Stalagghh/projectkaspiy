@@ -1,0 +1,70 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output and caches
+.next/
+out/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+.turbo/
+.cache/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+
+# Environment files and secrets (only .env.example is committed)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.p12
+infra/certs/
+infra/secrets/
+
+# Data, audio and model weights: fetched by scripts, never committed.
+# Only the manifests with checksums live in git.
+/data/*
+!/data/manifests/
+*.wav
+*.mp3
+*.flac
+*.ogg
+*.tflite
+*.h5
+*.onnx
+*.pth
+*.pt
+*.pmtiles
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Test artifacts
+playwright-report/
+test-results/
+blob-report/
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+*~
+
+# Local agent settings (personal, never shared)
+.claude/settings.local.json
