@@ -4,7 +4,13 @@
   "private": true,
   "type": "module",
   "exports": { ".": "./src/index.ts" },
-  "scripts": { "typecheck": "tsc --noEmit", "migrate": "node src/migrate.ts" },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --test \"src/**/*.test.ts\"",
+    "migrate": "node src/migrate.ts",
+    "seed": "node src/seed.ts",
+    "demo:reset": "node src/demo-reset.ts"
+  },
   "dependencies": { "@ecoshield/contracts": "workspace:*", "pg": "8.23.1" },
   "devDependencies": { "@types/node": "24.19.2", "@types/pg": "8.23.1", "typescript": "6.0.3" }
 }
