@@ -1,7 +1,7 @@
 // Starts the scripted "night poacher" scenario in the simulator (simulated data, labelled in the UI).
 import { scenarioRunSchema } from '@ecoshield/contracts';
 
-import { serverEnv } from '@/server/env';
+import { env as readEnv } from '@/server/env';
 import { jsonError, jsonOk } from '@/server/http';
 
 export const dynamic = 'force-dynamic';
@@ -10,7 +10,7 @@ export const runtime = 'nodejs';
 export async function POST(): Promise<Response> {
   let env;
   try {
-    env = serverEnv();
+    env = readEnv('SIMULATOR_URL', 'SIM_CONTROL_TOKEN');
   } catch (error) {
     console.error('[api/demo/start]', error);
     return jsonError(500, 'config', 'Симулятор не настроен на сервере');

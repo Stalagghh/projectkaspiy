@@ -70,7 +70,7 @@ async function handleNotification(message: pg.Notification): Promise<void> {
 }
 
 function scheduleReconnect(): void {
-  if (hub.retryTimer || hub.subscribers.size === 0) return;
+  if (hub.retryTimer || hub.client) return;
   const delay = hub.retryMs;
   hub.retryMs = Math.min(hub.retryMs * 2, 30_000);
   hub.retryTimer = setTimeout(() => {

@@ -5,7 +5,7 @@ import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { Readable } from 'node:stream';
 
-import { serverEnv } from '@/server/env';
+import { env } from '@/server/env';
 import { parseRange } from '@/server/http-range';
 
 export const dynamic = 'force-dynamic';
@@ -17,7 +17,13 @@ export async function GET(request: Request, ctx: { params: Promise<{ file: strin
   const { file } = await ctx.params;
   if (file !== ALLOWED_FILE) return new Response('Not found', { status: 404 });
 
-  const path = serverEnv().TILES_PATH;
+  let path: string;
+  try {
+    path = env('TILES_PATH').TILES_PATH;
+  } catch (error) {
+    console.error('[tiles]', error);
+    return new Response('Tiles not configured', { status: 500 });
+  }
   let size: number;
   let mtime: Date;
   try {
