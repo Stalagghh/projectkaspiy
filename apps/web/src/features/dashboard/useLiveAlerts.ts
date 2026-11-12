@@ -85,12 +85,13 @@ export function useLiveAlerts() {
         void loadAlerts();
       };
       es.onerror = () => {
+        // Without the stream, still load the list over plain HTTP (shows data or the error
+        // state); it is reloaded again on the next successful open.
+        void loadAlerts();
         if (es.readyState === EventSource.CLOSED) {
-          // The browser gave up (e.g. 503): load the list anyway (shows data or the error
-          // state) and retry the stream ourselves with backoff.
+          // The browser gave up (e.g. 503): retry the stream ourselves with backoff.
           setSseState('closed');
           es.close();
-          void loadAlerts();
           const delay = Math.min(30_000, 1000 * 2 ** attempt);
           attempt += 1;
           retryTimer = setTimeout(connect, delay);
