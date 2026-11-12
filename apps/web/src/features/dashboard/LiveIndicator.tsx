@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useNow } from '@/lib/useNow';
 
 import type { SseState } from './useLiveAlerts';
 
@@ -10,12 +10,7 @@ const STATE_LABEL: Record<SseState, string> = {
 };
 
 export function LiveIndicator({ state, lastUpdateAt }: { state: SseState; lastUpdateAt: number | null }) {
-  const [now, setNow] = useState<number | null>(null);
-  useEffect(() => {
-    setNow(Date.now());
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+  const now = useNow();
   const age = now !== null && lastUpdateAt !== null ? Math.max(0, Math.round((now - lastUpdateAt) / 1000)) : null;
   return (
     <span className="live" data-testid="sse-status" data-state={state}>

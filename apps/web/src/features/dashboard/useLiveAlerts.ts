@@ -68,10 +68,6 @@ export function useLiveAlerts() {
   }, []);
 
   useEffect(() => {
-    void loadAlerts();
-  }, [loadAlerts]);
-
-  useEffect(() => {
     let source: EventSource | null = null;
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
     let attempt = 0;
@@ -82,6 +78,7 @@ export function useLiveAlerts() {
       setSseState('connecting');
       const es = new EventSource('/api/stream');
       source = es;
+      // The list is (re)loaded on every open: there is no replay buffer.
       es.onopen = () => {
         attempt = 0;
         setSseState('open');
@@ -89,9 +86,11 @@ export function useLiveAlerts() {
       };
       es.onerror = () => {
         if (es.readyState === EventSource.CLOSED) {
-          // The browser gave up (e.g. 503): retry ourselves with backoff.
+          // The browser gave up (e.g. 503): load the list anyway (shows data or the error
+          // state) and retry the stream ourselves with backoff.
           setSseState('closed');
           es.close();
+          void loadAlerts();
           const delay = Math.min(30_000, 1000 * 2 ** attempt);
           attempt += 1;
           retryTimer = setTimeout(connect, delay);

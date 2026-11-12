@@ -1,10 +1,10 @@
 'use client';
 import { RefreshCw } from 'lucide-react';
-import { useEffect, useState } from 'react';
 
 import type { AlertDto } from '@ecoshield/contracts';
 
 import { formatPercent, formatRelative, formatTime, KIND_LABEL, QUALITATIVE_LABEL, STATUS_LABEL } from '@/lib/labels';
+import { useNow } from '@/lib/useNow';
 
 import { SeverityBadge } from './SeverityBadge';
 import type { LoadState } from './useLiveAlerts';
@@ -19,12 +19,7 @@ type Props = {
 };
 
 export function AlertFeed({ alerts, loadState, selectedId, freshIds, onSelect, onRetry }: Props) {
-  const [now, setNow] = useState<number | null>(null);
-  useEffect(() => {
-    setNow(Date.now());
-    const timer = setInterval(() => setNow(Date.now()), 5000);
-    return () => clearInterval(timer);
-  }, [alerts]);
+  const now = useNow();
 
   if (loadState === 'loading' && alerts.length === 0) {
     return (
