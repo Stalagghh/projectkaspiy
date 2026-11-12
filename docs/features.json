@@ -4,7 +4,9 @@
   "rules": [
     "status: todo | in_progress | done | blocked",
     "A feature becomes done only after every acceptance criterion passes and the evidence (commands, output, screenshots, PR) is recorded in docs/PROGRESS.md.",
-    "Acceptance criteria are never deleted or weakened to make a feature pass; if a criterion turns out to be wrong or infeasible, raise it with the team first."
+    "Acceptance criteria are never deleted or weakened to make a feature pass; if a criterion turns out to be wrong or infeasible, raise it with the team first.",
+    "tracks: review tracks of the feature; the first one is the primary code owner (CONTRIBUTING.md).",
+    "estimateHours: P50/P90 hours of developer time, see docs/PLAN.md section 18."
   ],
   "features": [
     {
@@ -12,6 +14,13 @@
       "priority": "must",
       "phase": "phase-1",
       "title": "Репозиторий, инструменты и CI",
+      "tracks": [
+        "P"
+      ],
+      "estimateHours": {
+        "p50": 2,
+        "p90": 3
+      },
       "dependsOn": [],
       "acceptance": [
         "Монорепо pnpm workspace: apps/web, services/{ingest,simulator,ml}, packages/{contracts,db}; pnpm-lock.yaml закоммичен; во всех package.json точные версии (без ^ и ~) — проверяется скриптом в pnpm check.",
@@ -20,16 +29,32 @@
         "В services/ml `uv run ruff check`, `uv run ruff format --check`, `uv run pytest` завершаются с кодом 0.",
         "lefthook pre-commit форматирует и линтит staged-файлы (TS и Python) и запускает gitleaks; коммит с тестовым поддельным секретом блокируется (показано).",
         "GitHub Actions на каждый PR: web-check (pnpm check), ml-check (ruff + pytest), contracts (сгенерированные типы ML API актуальны), audit (`pnpm audit --audit-level high`, pip-audit), secrets (gitleaks); действия закреплены по SHA.",
-        "CONTRIBUTING.md в корне описывает ветки, коммиты, PR, worktree и правила для агентов; настройки ruleset для main задокументированы (применяются после одобрения команды)."
+        "CONTRIBUTING.md в корне описывает ветки, коммиты, PR, worktree и правила для агентов; настройки ruleset для main задокументированы (применяются после одобрения команды).",
+        "Проверка авторства коммитов: хук lefthook commit-msg отклоняет сообщение с трейлером соавторства, no-reply адресом ИИ-вендора, строкой «generated with», эмодзи робота или названием ИИ-инструмента; хук pre-push проверяет автора, коммиттера и сообщение всех коммитов, которых ещё нет на GitHub (scripts/commit-hygiene.mjs).",
+        "CI-джоб commit-hygiene проваливает PR, если автор или коммиттер любого коммита PR — не идентичность проекта, или если сообщение коммита, заголовок или описание PR содержат запрещённые шаблоны; джоб входит в обязательные проверки ruleset для main.",
+        "Тесты (node --test) покрывают хук и CI: одно сообщение должно отклоняться, одно — проходить; проверка идентичности принимает идентичность проекта и отклоняет чужую.",
+        ".claude/settings.local.json задаёт attribution {commit: \"\", pr: \"\", sessionUrl: false} и не отслеживается git.",
+        ".github/CODEOWNERS сопоставляет пути трекам P/W/M/H/D с реальными GitHub-логинами ревьюеров; ruleset для main требует одно одобрение кодовладельца.",
+        ".github/pull_request_template.md задаёт 6 разделов описания PR на русском."
       ],
-      "status": "todo"
+      "status": "in_progress"
     },
     {
       "id": "F02",
       "priority": "must",
       "phase": "phase-1",
       "title": "Стек одной командой: Compose, сид, HTTPS в локальной сети",
-      "dependsOn": ["F01"],
+      "tracks": [
+        "P",
+        "D"
+      ],
+      "estimateHours": {
+        "p50": 5,
+        "p90": 8
+      },
+      "dependsOn": [
+        "F01"
+      ],
       "acceptance": [
         "Из чистого клона (с интернетом) `./scripts/up.sh` создаёт .env со случайными секретами (если его нет), локальный CA и сертификаты, учётки устройств MQTT, скачивает данные с проверкой sha256, собирает и запускает стек; повторный запуск идемпотентен.",
         "`docker compose ps` показывает healthy для postgres, mosquitto, caddy, web, ml, ingest, simulator; у каждого сервиса есть healthcheck; порядок старта по depends_on: service_healthy.",
@@ -37,7 +62,8 @@
         "Каждый сервис валидирует env на старте; при отсутствии обязательной переменной завершается с понятным сообщением (тест для web, ingest, ml).",
         "Веб доступен с телефона в той же сети по HTTPS через Caddy: сертификат от локального CA с SAN для IP точки доступа; HTTP перенаправляется на HTTPS.",
         "После сборки образов стек стартует и работает без интернета (проверено при отключённой сети).",
-        "Наружу (в локальную сеть) открыты только 80/443 (Caddy) и 8883 (MQTT/TLS); Postgres, ML, ingest и simulator не опубликованы."
+        "Наружу (в локальную сеть) открыты только 80/443 (Caddy) и 8883 (MQTT/TLS); Postgres, ML, ingest и simulator не опубликованы.",
+        "docs/DEMO_DEVICE_SETUP.md: пошаговая установка и полное доверие корневого сертификата на демо-телефоне (iOS и Android) и подключение к точке доступа ноутбука; инструкция проверена вместе с командой до CP2."
       ],
       "status": "todo"
     },
@@ -46,7 +72,17 @@
       "priority": "must",
       "phase": "phase-1",
       "title": "Аутентификация и роли (DAL)",
-      "dependsOn": ["F02"],
+      "tracks": [
+        "W",
+        "P"
+      ],
+      "estimateHours": {
+        "p50": 3,
+        "p90": 5
+      },
+      "dependsOn": [
+        "F02"
+      ],
       "acceptance": [
         "Вход через Better Auth (email + пароль); публичная регистрация отключена; пользователей создают только сид и admin.",
         "Пароли хранятся как argon2id (хеш в БД начинается с `$argon2id$`); параметры хеширования задокументированы.",
@@ -64,7 +100,18 @@
       "priority": "must",
       "phase": "phase-1",
       "title": "Карта ООПТ со слоями (офлайн)",
-      "dependsOn": ["F02", "F03"],
+      "tracks": [
+        "W",
+        "D"
+      ],
+      "estimateHours": {
+        "p50": 3.5,
+        "p90": 6
+      },
+      "dependsOn": [
+        "F02",
+        "F03"
+      ],
       "acceptance": [
         "Карта MapLibre рисуется из локальной PMTiles-вырезки района с локальными глифами (включая кириллицу) и спрайтами; при заблокированной внешней сети Playwright фиксирует 0 запросов к внешним хостам.",
         "Слои: базовая карта; граница заказника из OSM с видимой атрибуцией «© участники OpenStreetMap, ODbL»; зоны с пометкой «иллюстративно»; устройства со статусом online/stale/offline (иконка + текст + цвет); тревоги по severity (иконка + текст + цвет). Переключатель слоёв работает с клавиатуры.",
@@ -81,7 +128,17 @@
       "priority": "must",
       "phase": "slice-1-alert-pipeline",
       "title": "Приём MQTT и доверие к IoT",
-      "dependsOn": ["F02"],
+      "tracks": [
+        "P",
+        "H"
+      ],
+      "estimateHours": {
+        "p50": 3,
+        "p90": 4.5
+      },
+      "dependsOn": [
+        "F02"
+      ],
       "acceptance": [
         "Mosquitto принимает только TLS (8883) с сертификатом от локального CA; анонимный доступ запрещён; у каждого устройства своя учётка; ACL: устройство пишет только в ecoshield/v1/<свой id>/#, ingest читает ecoshield/v1/+/#. Тест: публикация устройства A в топик B не доходит до ingest.",
         "Каждое сообщение валидируется zod-схемой из packages/contracts; deviceId в топике, в сообщении и в реестре совпадают; невалидные отклоняются, считаются и логируются без содержимого.",
@@ -98,7 +155,16 @@
       "priority": "must",
       "phase": "slice-1-alert-pipeline",
       "title": "Аномалии показаний IoT (робастная статистика)",
-      "dependsOn": ["F05"],
+      "tracks": [
+        "P"
+      ],
+      "estimateHours": {
+        "p50": 1.5,
+        "p90": 2
+      },
+      "dependsOn": [
+        "F05"
+      ],
       "acceptance": [
         "Для каждого датчика — скользящая медиана и MAD (окно настраивается), робастный z-score с порогом, ограничение скорости изменения и статические пороги.",
         "Изменить пороги может только supervisor/admin; изменение записывается в аудит (старое → новое значение).",
@@ -113,7 +179,18 @@
       "priority": "must",
       "phase": "slice-1-alert-pipeline",
       "title": "Реальное время: LISTEN/NOTIFY → SSE",
-      "dependsOn": ["F03", "F05"],
+      "tracks": [
+        "W",
+        "P"
+      ],
+      "estimateHours": {
+        "p50": 3,
+        "p90": 4.5
+      },
+      "dependsOn": [
+        "F03",
+        "F05"
+      ],
       "acceptance": [
         "Изменения тревог и устройств через триггер попадают в realtime_events и NOTIFY; веб держит одно LISTEN-соединение на процесс с автопереподключением и рассылает SSE только авторизованным подписчикам с фильтром по участку и роли.",
         "Задержка от публикации симулятором (клип или показание) до появления тревоги во втором браузере ≤ 3 с: p95 по 10 прогонам на localhost, измеряется автотестом, числа записаны в docs/PERF.md.",
@@ -128,7 +205,17 @@
       "priority": "must",
       "phase": "slice-1-alert-pipeline",
       "title": "Лента тревог",
-      "dependsOn": ["F07"],
+      "tracks": [
+        "W",
+        "D"
+      ],
+      "estimateHours": {
+        "p50": 3,
+        "p90": 4.5
+      },
+      "dependsOn": [
+        "F07"
+      ],
       "acceptance": [
         "Сортировка: severity → priority → время; фильтры по статусу и severity доступны с клавиатуры; видны счётчики.",
         "Новая критическая тревога въезжает в ленту и пульсирует на карте; при prefers-reduced-motion анимаций нет.",
@@ -144,7 +231,16 @@
       "priority": "must",
       "phase": "slice-1-alert-pipeline",
       "title": "Симулятор сценариев (демо-режим)",
-      "dependsOn": ["F05"],
+      "tracks": [
+        "P"
+      ],
+      "estimateHours": {
+        "p50": 2,
+        "p90": 3
+      },
+      "dependsOn": [
+        "F05"
+      ],
       "acceptance": [
         "Сценарий night-poaching описан в версионируемом файле; события публикуются в MQTT с собственными учётками симулированных устройств и проходят тот же конвейер, что и реальные данные (симулятор не пишет в БД).",
         "Детерминизм: одинаковый seed даёт одинаковую последовательность сообщений (кроме меток времени: время старта + смещение); тест сравнивает хеши.",
@@ -159,7 +255,16 @@
       "priority": "must",
       "phase": "slice-2-audio-ai",
       "title": "ML-сервис: классификация аудио (YAMNet)",
-      "dependsOn": ["F01"],
+      "tracks": [
+        "M"
+      ],
+      "estimateHours": {
+        "p50": 3,
+        "p90": 4.5
+      },
+      "dependsOn": [
+        "F01"
+      ],
       "acceptance": [
         "POST /v1/audio/classify принимает wav/mp3/flac/ogg до 10 МБ и до 60 с; тип определяется по magic bytes; иначе 413/415/422 с кодом ошибки.",
         "YAMNet (предобучен на AudioSet) на LiteRT; окна 0,96 с с шагом 0,48 с; по окну — оценки {boat_engine, gunshot, background} и топ-5 классов AudioSet; список событий с временами; итог по клипу.",
@@ -177,7 +282,19 @@
       "priority": "must",
       "phase": "slice-2-audio-ai",
       "title": "Аудио-пайплайн, правила тревог и режим деградации",
-      "dependsOn": ["F05", "F07", "F10"],
+      "tracks": [
+        "P",
+        "M"
+      ],
+      "estimateHours": {
+        "p50": 3,
+        "p90": 4.5
+      },
+      "dependsOn": [
+        "F05",
+        "F07",
+        "F10"
+      ],
       "acceptance": [
         "Клипы от буёв (MQTT) и загруженные файлы проходят одну очередь (audio_clips) → ML → detections → правила тревог.",
         "Правила: gunshot ≥ порога → critical; boat_engine ≥ порога внутри зоны no_entry → warning; лодка и выстрел в пределах 15 мин и 3 км → тревоги связываются, приоритет повышается; тёмное время суток (высота солнца < −6°) → надбавка к приоритету. Причины приоритета сохраняются и показываются.",
@@ -192,7 +309,17 @@
       "priority": "must",
       "phase": "slice-2-audio-ai",
       "title": "Загрузка аудиофайла инспектором",
-      "dependsOn": ["F11"],
+      "tracks": [
+        "W",
+        "M"
+      ],
+      "estimateHours": {
+        "p50": 1.5,
+        "p90": 2.5
+      },
+      "dependsOn": [
+        "F11"
+      ],
       "acceptance": [
         "Экран «Анализ аудио»: выбор файла и drag&drop, прогресс, результат (спектрограмма, оценки, топ классов, версия модели).",
         "Проверка на сервере: размер ≤ 10 МБ (потоковый счётчик и лимит в Caddy), magic bytes wav/mp3/flac/ogg, длительность ≤ 60 с; SVG и прочие типы отклоняются с понятным сообщением на русском.",
@@ -207,7 +334,16 @@
       "priority": "must",
       "phase": "slice-2-audio-ai",
       "title": "Оценка модели и MODEL_CARD",
-      "dependsOn": ["F10"],
+      "tracks": [
+        "M"
+      ],
+      "estimateHours": {
+        "p50": 3,
+        "p90": 5
+      },
+      "dependsOn": [
+        "F10"
+      ],
       "acceptance": [
         "Сплиты train/val/test зафиксированы в манифесте с sha256 и разделены по группам (фолды, исходная запись); test не используется для обучения и подбора порогов; скрипт проверяет отсутствие пересечений.",
         "`uv run python -m ml.eval` выдаёт precision, recall, F1 по классам, матрицу ошибок, объёмы выборок и 95% доверительные интервалы; в docs/MODEL_CARD.md попадают только числа из этого вывода.",
@@ -223,7 +359,17 @@
       "priority": "must",
       "phase": "slice-3-alert-lifecycle",
       "title": "Карточка тревоги",
-      "dependsOn": ["F11"],
+      "tracks": [
+        "W",
+        "M"
+      ],
+      "estimateHours": {
+        "p50": 2.5,
+        "p90": 4
+      },
+      "dependsOn": [
+        "F11"
+      ],
       "acceptance": [
         "Показывает severity (иконка и текст), тип, статус, время (Europe/Moscow и относительное), координаты моноширинным шрифтом, зону, устройство, приоритет с объяснением причин.",
         "Для акустических тревог: плеер с поддержкой Range/206 (проверено на iOS Safari или WebKit в Playwright), спектрограмма с плейхедом, синхронизированным с воспроизведением, топ-k классов в % со словесной оценкой, модель, версия, порог.",
@@ -240,7 +386,17 @@
       "priority": "must",
       "phase": "slice-3-alert-lifecycle",
       "title": "Жизненный цикл тревоги и обратная связь для дообучения",
-      "dependsOn": ["F14"],
+      "tracks": [
+        "W",
+        "P"
+      ],
+      "estimateHours": {
+        "p50": 3,
+        "p90": 4
+      },
+      "dependsOn": [
+        "F14"
+      ],
       "acceptance": [
         "Машина состояний на сервере: new → acknowledged → assigned → resolved | false_positive; из new и acknowledged также можно в false_positive; resolved и false_positive терминальные. Недопустимые переходы отклоняются; юнит-тесты покрывают все пары состояний.",
         "Server Actions проверяют вход (zod), сессию, роль, участок и версию; при конфликте версий — понятное сообщение без перезаписи (тест с двумя сессиями).",
@@ -256,7 +412,17 @@
       "priority": "must",
       "phase": "slice-3-alert-lifecycle",
       "title": "Журнал аудита (append-only)",
-      "dependsOn": ["F03"],
+      "tracks": [
+        "P",
+        "W"
+      ],
+      "estimateHours": {
+        "p50": 1.5,
+        "p90": 2
+      },
+      "dependsOn": [
+        "F03"
+      ],
       "acceptance": [
         "audit_log только на добавление: у ролей приложения есть только INSERT/SELECT, триггер отклоняет UPDATE/DELETE (тест от ролей web и ingest).",
         "Записываются: вход и неудачный вход, выход, смена статуса тревоги, назначение патруля, смена роли, изменение порогов, старт и сброс сценария, обновление прогноза.",
@@ -270,7 +436,17 @@
       "priority": "must",
       "phase": "slice-4-forecast",
       "title": "Модель прогноза присутствия каспийского тюленя",
-      "dependsOn": ["F02", "F10"],
+      "tracks": [
+        "M"
+      ],
+      "estimateHours": {
+        "p50": 4.5,
+        "p90": 7
+      },
+      "dependsOn": [
+        "F02",
+        "F10"
+      ],
       "acceptance": [
         "Прозрачная модель: сезонный базис + аддитивная шкала факторов в логитах; все веса и допущения в версионируемом конфиге со ссылками на ID допущений (A-S*); тест запрещает фактор без допущения.",
         "Сетка шестиугольников (PostGIS ST_HexagonGrid, шаг ≈ 1,5–2 км) по операционной зоне; для каждой ячейки и каждого из 7 дней — индекс присутствия 0–1, приоритет патруля, уровень и топ-3 вклада факторов со значениями и единицами.",
@@ -286,7 +462,18 @@
       "priority": "must",
       "phase": "slice-4-forecast",
       "title": "Экран прогноза и зоны патрулирования",
-      "dependsOn": ["F17", "F04"],
+      "tracks": [
+        "W",
+        "M"
+      ],
+      "estimateHours": {
+        "p50": 3,
+        "p90": 4.5
+      },
+      "dependsOn": [
+        "F17",
+        "F04"
+      ],
       "acceptance": [
         "Слой присутствия и приоритета на карте; легенда — цвет плюс числовые подписи или штриховка; выбор дня 1–7 с клавиатуры; зоны патрулирования с рангами.",
         "Объяснение простым языком (по шаблонам) для всей территории и для выбранной ячейки: главные факторы и направление их влияния; текст прямо говорит, что модель основана на допущениях и требует проверки экологами.",
@@ -301,7 +488,17 @@
       "priority": "must",
       "phase": "polish",
       "title": "Базовая безопасность и SECURITY.md",
-      "dependsOn": ["F03"],
+      "tracks": [
+        "P",
+        "W"
+      ],
+      "estimateHours": {
+        "p50": 3,
+        "p90": 4
+      },
+      "dependsOn": [
+        "F03"
+      ],
       "acceptance": [
         "На всех HTML-ответах: CSP с nonce на каждый запрос и strict-dynamic для скриптов (в проде в script-src нет 'unsafe-inline' и 'unsafe-eval'), frame-ancestors 'none', base-uri, object-src 'none'; HSTS; X-Content-Type-Options: nosniff; Referrer-Policy; Permissions-Policy только с используемыми возможностями (geolocation=(self)). Проверяется автотестом заголовков.",
         "0 нарушений CSP за весь e2e-сценарий (Playwright слушает securitypolicyviolation).",
@@ -319,7 +516,19 @@
       "priority": "must",
       "phase": "polish",
       "title": "Адаптивный интерфейс, темы и состояния данных",
-      "dependsOn": ["F08", "F14", "F18"],
+      "tracks": [
+        "W",
+        "D"
+      ],
+      "estimateHours": {
+        "p50": 4,
+        "p90": 6
+      },
+      "dependsOn": [
+        "F08",
+        "F14",
+        "F18"
+      ],
       "acceptance": [
         "Раскладки: ≥ 360 px — карта во весь экран и нижний лист, действия в зоне большого пальца; ≥ 768 px — карта и сворачиваемая боковая панель; ≥ 1280 px — карта, лента и контекстная панель одновременно; компоненты в панелях используют container queries.",
         "Токены (CSS-переменные): тёмная тема по умолчанию и высококонтрастная светлая; выбор сохраняется в cookie и применяется без мигания; цвета severity используются только для тревог и всегда вместе с иконкой и текстом.",
@@ -335,7 +544,17 @@
       "priority": "must",
       "phase": "polish",
       "title": "Доступность WCAG 2.2 AA",
-      "dependsOn": ["F20"],
+      "tracks": [
+        "W",
+        "D"
+      ],
+      "estimateHours": {
+        "p50": 2,
+        "p90": 3
+      },
+      "dependsOn": [
+        "F20"
+      ],
       "acceptance": [
         "Контраст текста ≥ 4,5:1 (крупного ≥ 3:1), элементов интерфейса ≥ 3:1 в обеих темах — проверяется скриптом по токенам.",
         "Видимый фокус; всё управляется с клавиатуры, кроме свободного панорамирования карты; логичный порядок табуляции; ссылка «перейти к содержимому».",
@@ -351,7 +570,16 @@
       "priority": "must",
       "phase": "polish",
       "title": "Производительность (замерено на прод-сборке)",
-      "dependsOn": ["F20"],
+      "tracks": [
+        "W"
+      ],
+      "estimateHours": {
+        "p50": 2.5,
+        "p90": 4
+      },
+      "dependsOn": [
+        "F20"
+      ],
       "acceptance": [
         "Lighthouse (мобильный профиль) на `next build` + `next start` за Caddy: дашборд — LCP ≤ 2,5 с и CLS ≤ 0,1; INP ≤ 200 мс (замер web-vitals в сценарии Playwright, TBT из Lighthouse тоже записан); Performance ≥ 90 на страницах без карты и ≥ 80 на странице карты; Best Practices ≥ 95 везде. Фактические числа в docs/PERF.md.",
         "`next analyze`: записан first-load JS маршрутов /login и /alerts; объяснены три крупнейших чанка.",
@@ -365,7 +593,16 @@
       "priority": "must",
       "phase": "release",
       "title": "Документация и демо-кит",
-      "dependsOn": ["F22"],
+      "tracks": [
+        "D"
+      ],
+      "estimateHours": {
+        "p50": 3,
+        "p90": 4
+      },
+      "dependsOn": [
+        "F22"
+      ],
       "acceptance": [
         "README.md: запуск одной командой, локальные демо-учётки (только для локального запуска), как запустить и сбросить сценарий, решение проблем (сертификат на телефон, точка доступа).",
         "Актуальны docs/ARCHITECTURE.md (Mermaid-схема для слайда), docs/SECURITY.md, docs/MODEL_CARD.md, docs/PLAN.md, docs/PROGRESS.md.",
@@ -380,7 +617,16 @@
       "priority": "should",
       "phase": "hardware",
       "title": "ESP32: водная станция",
-      "dependsOn": ["F05"],
+      "tracks": [
+        "H"
+      ],
+      "estimateHours": {
+        "p50": 4,
+        "p90": 6
+      },
+      "dependsOn": [
+        "F05"
+      ],
       "acceptance": [
         "ESP32 читает температуру воды, TDS или электропроводность и мутность (конкретные датчики — по наличию) и каждые 5 с публикует их по MQTT поверх TLS: CA закреплён в прошивке, учётка своя.",
         "Сообщение по контракту: deviceId, bootId (хранится в NVS), монотонный seq, ts (NTP; без синхронизации — флаг), показания с единицами.",
@@ -395,7 +641,18 @@
       "priority": "should",
       "phase": "hardware",
       "title": "Raspberry Pi: акустический буй с инференсом на краю",
-      "dependsOn": ["F10", "F11"],
+      "tracks": [
+        "H",
+        "M"
+      ],
+      "estimateHours": {
+        "p50": 4,
+        "p90": 6
+      },
+      "dependsOn": [
+        "F10",
+        "F11"
+      ],
       "acceptance": [
         "RPi с USB-микрофоном пишет звук непрерывно и прогоняет YAMNet (LiteRT, тот же файл модели и маппинг) по окнам; при превышении порога отправляет 10-секундный клип (WAV 16 кГц моно) и результат на краю по MQTT/TLS со своей учёткой.",
         "Сервер переклассифицирует клип (его результат — основной); результат с края показывается как «подсказка буя».",
@@ -409,7 +666,16 @@
       "priority": "should",
       "phase": "should",
       "title": "Английская локаль",
-      "dependsOn": ["F20"],
+      "tracks": [
+        "W"
+      ],
+      "estimateHours": {
+        "p50": 2,
+        "p90": 3
+      },
+      "dependsOn": [
+        "F20"
+      ],
       "acceptance": [
         "Все строки интерфейса берутся из словарей (ru, en); выбор языка сохраняется; даты, числа и плюральные формы форматируются по локали.",
         "В компонентах нет захардкоженных строк (проверка линтером или скриптом).",
@@ -422,7 +688,16 @@
       "priority": "should",
       "phase": "should",
       "title": "PWA и офлайн-индикатор",
-      "dependsOn": ["F20"],
+      "tracks": [
+        "W"
+      ],
+      "estimateHours": {
+        "p50": 3,
+        "p90": 4
+      },
+      "dependsOn": [
+        "F20"
+      ],
       "acceptance": [
         "Manifest (имя, иконки, цвета темы); приложение устанавливается на Android и iOS (проверка installability в Lighthouse).",
         "Service worker кэширует оболочку приложения и статику; офлайн — страница и индикатор, последние загруженные данные помечены как устаревшие со временем.",
