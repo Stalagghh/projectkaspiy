@@ -6,6 +6,15 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p data/models/yamnet data/tiles data/demo
 
+verify() { # manifest label: stop the whole run when a file does not match its checksum
+  if (cd data && sha256sum --quiet -c "$1"); then
+    echo "fetch-data: $2 — OK"
+  else
+    echo "fetch-data: контрольная сумма не совпала ($2). Удалите испорченный файл и запустите снова." >&2
+    exit 1
+  fi
+}
+
 fetch() { # url destination
   if [ ! -s "$2" ]; then
     echo "fetch-data: скачиваю $2"
@@ -17,15 +26,18 @@ fetch https://storage.googleapis.com/download.tensorflow.org/models/tflite/task_
   data/models/yamnet/yamnet_classification.tflite
 fetch https://raw.githubusercontent.com/tensorflow/models/master/research/audioset/yamnet/yamnet_class_map.csv \
   data/models/yamnet/yamnet_class_map.csv
-(cd data && sha256sum --quiet -c manifests/models.sha256) && echo "fetch-data: модель YAMNet — OK"
+verify manifests/models.sha256 "модель YAMNet"
 
 if [ ! -s data/tiles/agrakhan.pmtiles ]; then
   command -v pmtiles >/dev/null || { echo "fetch-data: нужен go-pmtiles (см. docs/PROGRESS.md)" >&2; exit 1; }
   build=$(cat data/manifests/tiles.build)
-  pmtiles extract "https://build.protomaps.com/${build}.pmtiles" data/tiles/agrakhan.pmtiles \
+  # Extract into a temporary file so that an interrupted download is never mistaken for a complete one.
+  rm -f data/tiles/agrakhan.pmtiles.part
+  pmtiles extract "https://build.protomaps.com/${build}.pmtiles" data/tiles/agrakhan.pmtiles.part \
     --bbox=46.8,43.2,48.4,44.7 --maxzoom=13
+  mv data/tiles/agrakhan.pmtiles.part data/tiles/agrakhan.pmtiles
 fi
-(cd data && sha256sum --quiet -c manifests/tiles.sha256) && echo "fetch-data: тайлы карты — OK"
+verify manifests/tiles.sha256 "тайлы карты"
 
 if [ ! -s data/demo/boat_engine.wav ] || [ ! -s data/demo/gunshot.wav ]; then
   echo "fetch-data: готовлю демо-клипы (services/ml/tools/prepare_demo_clips.py)"

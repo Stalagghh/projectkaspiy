@@ -21,12 +21,15 @@ fi
 
 # 1. Secrets for this laptop only. Never committed (.gitignore).
 if [ ! -f .env ]; then
-  umask 077
-  {
-    echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)"
-    echo "ML_API_TOKEN=$(openssl rand -hex 32)"
-    echo "SIM_CONTROL_TOKEN=$(openssl rand -hex 32)"
-  } > .env
+  # The umask stays inside the subshell so that downloaded data keeps normal permissions.
+  (
+    umask 077
+    {
+      echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)"
+      echo "ML_API_TOKEN=$(openssl rand -hex 32)"
+      echo "SIM_CONTROL_TOKEN=$(openssl rand -hex 32)"
+    } > .env
+  )
   echo "up: создан .env со случайными секретами"
 fi
 

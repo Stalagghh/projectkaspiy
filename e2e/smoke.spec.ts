@@ -8,6 +8,8 @@ import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
 
 const MAX_ALERT_LATENCY_MS = 3000;
+/** Allowed difference between the test runner clock and the simulator clock (same laptop). */
+const CLOCK_SKEW_MS = 2000;
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DEMO_CLIP = join(HERE, '..', 'data', 'demo', 'boat_engine.wav');
 
@@ -45,6 +47,7 @@ test('night poacher scenario: real classification, live alerts within 3 s, card,
   const startResponse = page.waitForResponse(
     (r) => r.url().endsWith('/api/demo/start') && r.request().method() === 'POST',
   );
+  const clickedAt = Date.now();
   await page.getByTestId('start-scenario').click();
   const start = await startResponse;
   expect(start.ok(), `scenario start failed: ${start.status()}`).toBeTruthy();
@@ -54,35 +57,45 @@ test('night poacher scenario: real classification, live alerts within 3 s, card,
     { kind: 'boat_in_no_entry_zone', severity: 'warning', label: 'boat_engine' },
     { kind: 'gunshot', severity: 'critical', label: 'gunshot' },
   ] as const;
+  // Only alerts whose event happened after the click count, so leftovers from earlier runs that the
+  // feed renders late are never mistaken for this run's alerts.
+  const found: Record<string, { seen: SeenAlert; alert: { eventAt: string } & Record<string, unknown> }> = {};
   await expect
-    .poll(async () => (await seenAlerts(page)).map((a) => a.kind), { timeout: 45_000 })
-    .toEqual(expect.arrayContaining(expected.map((e) => e.kind)));
+    .poll(
+      async () => {
+        for (const s of await seenAlerts(page)) {
+          if (!s.kind || found[s.kind] || !expected.some((e) => e.kind === s.kind)) continue;
+          const res = await request.get(`/api/alerts/${s.id}`);
+          if (!res.ok()) continue;
+          const alert = await res.json();
+          if (Date.parse(alert.eventAt) >= clickedAt - CLOCK_SKEW_MS) found[s.kind] = { seen: s, alert };
+        }
+        return Object.keys(found).sort();
+      },
+      { timeout: 45_000 },
+    )
+    .toEqual(expected.map((e) => e.kind).sort());
 
-  const seen = await seenAlerts(page);
   const latencies: Record<string, number> = {};
   for (const e of expected) {
-    const s = seen.find((a) => a.kind === e.kind);
-    expect(s, `no new ${e.kind} alert`).toBeTruthy();
-    const res = await request.get(`/api/alerts/${s!.id}`);
-    expect(res.ok()).toBeTruthy();
-    const alert = await res.json();
+    const { seen: s, alert } = found[e.kind]!;
     expect(alert.severity).toBe(e.severity);
     expect(alert.isSimulated).toBe(true);
     // The label must be what the model returned for this clip (stored detection), not a fixed value.
-    expect(alert.detection?.label).toBe(e.label);
-    latencies[e.kind] = s!.t - Date.parse(alert.eventAt);
+    expect((alert.detection as { label?: string } | null)?.label).toBe(e.label);
+    latencies[e.kind] = s.t - Date.parse(alert.eventAt);
     expect(latencies[e.kind], `${e.kind} latency`).toBeLessThanOrEqual(MAX_ALERT_LATENCY_MS);
   }
 
   // The alert card shows the real classification, the audio and the spectrogram.
-  const gunshot = seen.find((a) => a.kind === 'gunshot')!;
+  const gunshot = found.gunshot!.seen;
   await page.locator(`[data-testid="alert-item"][data-alert-id="${gunshot.id}"]`).click();
   const detail = page.getByTestId('alert-detail');
   await expect(detail).toHaveAttribute('data-alert-id', gunshot.id);
   await expect(detail.getByTestId('alert-label')).toHaveAttribute('data-label', 'gunshot');
   const confidence = Number(await detail.getByTestId('alert-confidence').getAttribute('data-confidence'));
   expect(confidence).toBeGreaterThan(0);
-  expect(await detail.getByTestId('alert-topclasses').locator('li').count()).toBeGreaterThan(0);
+  await expect(detail.getByTestId('alert-topclasses').locator('li').first()).toBeVisible();
   await expect
     .poll(() => detail.getByTestId('alert-spectrogram').evaluate((img) => (img as HTMLImageElement).naturalWidth))
     .toBeGreaterThan(0);
@@ -116,8 +129,10 @@ test('forecast page shows a 7-day layer, an explanation and source badges', asyn
 test('audio page classifies an uploaded file with the real model', async ({ page }) => {
   await page.goto('/audio');
   await page.getByTestId('audio-file-input').setInputFiles(DEMO_CLIP);
+  // The page may classify on file selection or wait for an explicit submit; wait for one of the two.
   const submit = page.getByTestId('audio-submit');
-  if (await submit.count()) await submit.click();
+  await expect(submit.or(page.getByTestId('audio-result')).first()).toBeVisible();
+  if (await submit.isVisible()) await submit.click();
   await expect(page.getByTestId('audio-result')).toHaveAttribute('data-label', 'boat_engine', { timeout: 30_000 });
   await expect
     .poll(() => page.getByTestId('audio-spectrogram').evaluate((img) => (img as HTMLImageElement).naturalWidth))
