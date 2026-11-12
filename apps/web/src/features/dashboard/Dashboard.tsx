@@ -1,10 +1,11 @@
 'use client';
 import { FlaskConical } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 
 import type { AlertDto } from '@ecoshield/contracts';
+
+import { TopBar } from '@/components/TopBar';
 
 import { AlertDetail } from './AlertDetail';
 import { AlertFeed } from './AlertFeed';
@@ -46,26 +47,14 @@ export function Dashboard() {
 
   return (
     <div className="app">
-      <header className="topbar">
-        <div style={{ display: 'grid' }}>
-          <span className="brand-title">Эко-щит Каспия</span>
-          <span className="brand-sub">Аграханский заказник</span>
-        </div>
-        <nav className="nav" aria-label="Разделы">
-          <Link href="/" aria-current="page">
-            Дашборд
-          </Link>
-          <Link href="/forecast">Прогноз</Link>
-          <Link href="/audio">Анализ аудио</Link>
-        </nav>
-        <span className="topbar-spacer" />
+      <TopBar>
         <span className="sim-badge">
           <FlaskConical size={14} aria-hidden="true" />
           Данные датчиков и сценарий — симуляция
         </span>
         <LiveIndicator state={live.sseState} lastUpdateAt={live.lastUpdateAt} />
         <ScenarioButton />
-      </header>
+      </TopBar>
 
       <main className="main">
         <div className="map-col">
