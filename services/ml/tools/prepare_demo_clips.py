@@ -34,6 +34,7 @@ TRIM_SECONDS = {
     "boat_engine.wav": (42.0, 52.0),
     "gunshot.wav": (12.0, 22.0),
     "thunder.wav": (0.0, 10.0),
+    "fireworks.wav": (0.0, 10.0),
 }
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
