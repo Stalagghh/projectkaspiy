@@ -102,3 +102,12 @@ def test_forecast_endpoint() -> None:
     assert response.status_code == 200
     assert response.json()["model"]["simplified"] is True
     assert unauthorized.status_code == 401
+
+
+@needs_model
+def test_classify_times_out_with_504(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PROCESSING_TIMEOUT_S", "0.000001")
+    get_settings.cache_clear()
+    with TestClient(app) as client:
+        response = client.post("/v1/audio/classify", content=wav_bytes(sine(30.0), 16_000), headers=AUTH)
+    assert (response.status_code, response.json()) == (504, {"error": "processing_timeout"})
