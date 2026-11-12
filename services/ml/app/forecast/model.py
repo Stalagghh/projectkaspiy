@@ -145,11 +145,10 @@ class SealForecastModel:
             cells = []
             for cell in request.cells:
                 factors = self.factors_for(day, hydro, cell.distHauloutKm)
-                presence = sigmoid(sum(fa.contribution for fa in factors))
+                # Round first, so the level always agrees with the number shown to the user.
+                presence = round(sigmoid(sum(fa.contribution for fa in factors)), 4)
                 cells.append(
-                    CellForecast(
-                        id=cell.id, presence=round(presence, 4), level=self.level(presence), factors=factors
-                    )
+                    CellForecast(id=cell.id, presence=presence, level=self.level(presence), factors=factors)
                 )
             dist = {c.id: c.distHauloutKm for c in request.cells}
             summary_ru, summary_en = self.summaries(cells, dist)
