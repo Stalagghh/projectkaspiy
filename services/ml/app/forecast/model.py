@@ -176,10 +176,14 @@ class SealForecastModel:
 
         drivers_ru = ", ".join(f"{FACTOR_RU[d.name]} ({sign(d.contribution)})" for d in drivers)
         drivers_en = ", ".join(f"{FACTOR_EN[d.name]} ({sign(d.contribution)})" for d in drivers)
-        ru = (
-            f"Выше всего индекс присутствия в {dist_km[best.id]:.1f} км от кандидатной залёжки: "
-            f"≈ {best.presence:.2f} (уровень «{LEVEL_RU[best.level]}»), ниже всего в "
-            f"{dist_km[worst.id]:.1f} км: ≈ {worst.presence:.2f}. "
+
+        def ru(x: float, digits: int) -> str:
+            return f"{x:.{digits}f}".replace(".", ",")  # Russian decimal comma
+
+        text_ru = (
+            f"Выше всего индекс присутствия в {ru(dist_km[best.id], 1)} км от кандидатной залёжки: "
+            f"≈ {ru(best.presence, 2)} (уровень «{LEVEL_RU[best.level]}»), ниже всего в "
+            f"{ru(dist_km[worst.id], 1)} км: ≈ {ru(worst.presence, 2)}. "
             f"Главные факторы: {drivers_ru}. {DISCLAIMER_RU}"
         )
         en = (
@@ -187,4 +191,4 @@ class SealForecastModel:
             f"≈ {best.presence:.2f} ({best.level}), lowest {dist_km[worst.id]:.1f} km away: "
             f"≈ {worst.presence:.2f}. Main drivers: {drivers_en}. {DISCLAIMER_EN}"
         )
-        return ru, en
+        return text_ru, en

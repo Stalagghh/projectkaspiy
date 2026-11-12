@@ -52,10 +52,15 @@ def decode_audio(data: bytes, max_duration_s: float) -> tuple[np.ndarray, int, f
     try:
         with sf.SoundFile(io.BytesIO(data)) as f:
             original_rate = int(f.samplerate)
-            # Check the declared length before decoding everything (cheap protection).
+            # Check the declared length before decoding anything (cheap protection).
             if f.frames > 0 and f.frames / original_rate > max_duration_s + 0.5:
                 raise AudioTooLong()
-            audio = f.read(dtype="float32", always_2d=True)
+            # Never decode more than the limit plus one frame, even if the header lies,
+            # so a small compressed file cannot expand into gigabytes of samples.
+            max_frames = int(np.ceil(max_duration_s * original_rate))
+            audio = f.read(frames=max_frames + 1, dtype="float32", always_2d=True)
+            if len(audio) > max_frames:
+                raise AudioTooLong()
     except AudioTooLong:
         raise
     except Exception as exc:  # libsndfile reports many different errors; all mean "cannot decode"
