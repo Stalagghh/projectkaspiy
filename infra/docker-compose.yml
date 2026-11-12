@@ -1,0 +1,142 @@
+# The whole stack on one laptop. Start it with ./scripts/up.sh from the repository root.
+# Paths are relative to this file (infra/). Secrets come from ../.env (created by up.sh).
+# Milestone A simplifications (see docs/PROGRESS.md): plain MQTT inside the Docker network,
+# no Caddy/HTTPS yet, web published on localhost only.
+
+x-node-app: &node-app
+  image: ecoshield-node:dev
+  build:
+    context: ..
+    dockerfile: infra/node.Dockerfile
+  restart: unless-stopped
+  init: true
+
+services:
+  db:
+    image: postgis/postgis:18-3.7
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ecoshield
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run scripts/up.sh to create .env}
+      POSTGRES_DB: ecoshield
+    volumes:
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ecoshield -d ecoshield"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+  mqtt:
+    image: eclipse-mosquitto:2.0.22
+    restart: unless-stopped
+    command: ["mosquitto", "-c", "/mosquitto/config/mosquitto.conf"]
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    healthcheck:
+      test: ["CMD", "mosquitto_sub", "-h", "127.0.0.1", "-t", "$$SYS/broker/uptime", "-C", "1", "-W", "3"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  ml:
+    image: ecoshield-ml:dev
+    build:
+      context: ../services/ml
+    restart: unless-stopped
+    environment:
+      ML_API_TOKEN: ${ML_API_TOKEN:?run scripts/up.sh to create .env}
+      YAMNET_MODEL_PATH: /models/yamnet/yamnet_classification.tflite
+      YAMNET_CLASS_MAP: /models/yamnet/yamnet_class_map.csv
+    volumes:
+      - ../data/models:/models:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  # One-shot: applies migrations and loads the seed data, then exits.
+  migrate:
+    <<: *node-app
+    restart: "no"
+    command: ["sh", "-c", "node packages/db/src/migrate.ts && node packages/db/src/seed.ts"]
+    environment:
+      DATABASE_URL: postgres://ecoshield:${POSTGRES_PASSWORD}@db:5432/ecoshield
+    depends_on:
+      db:
+        condition: service_healthy
+
+  ingest:
+    <<: *node-app
+    command: ["node", "services/ingest/src/main.ts"]
+    environment:
+      DATABASE_URL: postgres://ecoshield:${POSTGRES_PASSWORD}@db:5432/ecoshield
+      MQTT_URL: mqtt://mqtt:1883
+      ML_URL: http://ml:8000
+      ML_API_TOKEN: ${ML_API_TOKEN}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      mqtt:
+        condition: service_healthy
+      ml:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8081/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  simulator:
+    <<: *node-app
+    command: ["node", "services/simulator/src/main.ts"]
+    environment:
+      MQTT_URL: mqtt://mqtt:1883
+      SIM_CONTROL_TOKEN: ${SIM_CONTROL_TOKEN:?run scripts/up.sh to create .env}
+      DEMO_CLIPS_DIR: /data/demo
+    volumes:
+      - ../data/demo:/data/demo:ro
+    ports:
+      # Localhost only: lets `pnpm demo:start` reach the control API from the laptop.
+      - "127.0.0.1:8090:8090"
+    depends_on:
+      mqtt:
+        condition: service_healthy
+      ingest:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8090/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  web:
+    image: ecoshield-web:dev
+    build:
+      context: ..
+      dockerfile: infra/web.Dockerfile
+    restart: unless-stopped
+    init: true
+    environment:
+      DATABASE_URL: postgres://ecoshield:${POSTGRES_PASSWORD}@db:5432/ecoshield
+      ML_URL: http://ml:8000
+      ML_API_TOKEN: ${ML_API_TOKEN}
+      SIMULATOR_URL: http://simulator:8090
+      SIM_CONTROL_TOKEN: ${SIM_CONTROL_TOKEN}
+      TILES_PATH: /data/tiles/agrakhan.pmtiles
+    volumes:
+      - ../data/tiles:/data/tiles:ro
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+
+volumes:
+  db-data:

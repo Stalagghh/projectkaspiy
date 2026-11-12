@@ -71,3 +71,6 @@ Thumbs.db
 
 # Local git worktrees for parallel work
 .worktrees/
+
+# Smoke test output
+e2e/results/
