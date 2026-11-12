@@ -379,11 +379,13 @@ def main() -> None:
     quiet_utm = largest_polygon(island_utm.buffer(QUIET_ZONE_M).intersection(sea_utm).difference(island_utm))
     ring_utm = island_utm.buffer(BUFFER_ZONE_M).difference(island_utm.buffer(QUIET_ZONE_M))
     buffer_utm = largest_polygon(ring_utm.intersection(sea_utm))
+    # Zones are built in UTM and clipped once more in lon/lat, because a straight
+    # edge in UTM is not exactly straight in lon/lat.
     quiet, buffer_zone = write_collection(
         "zones.geojson",
         [
             feature(
-                to_wgs(quiet_utm),
+                largest_polygon(to_wgs(quiet_utm).intersection(sea)),
                 {
                     "id": "zone-chechen-quiet",
                     "kind": "no_entry",
@@ -393,7 +395,7 @@ def main() -> None:
                 },
             ),
             feature(
-                to_wgs(buffer_utm),
+                largest_polygon(to_wgs(buffer_utm).intersection(sea)),
                 {
                     "id": "zone-chechen-buffer",
                     "kind": "buffer",
@@ -405,6 +407,11 @@ def main() -> None:
         ],
     )
     quiet_utm, buffer_utm = to_utm(quiet), to_utm(buffer_zone)
+    # Rounding to 6 decimals (about 0.1 m) leaves slivers a few cm wide along the
+    # shore, so the check allows 0.5 m.
+    sea_tolerance_utm = sea_utm.buffer(0.5)
+    for zone_id, zone_utm in (("zone-chechen-quiet", quiet_utm), ("zone-chechen-buffer", buffer_utm)):
+        check(zone_utm.difference(sea_tolerance_utm).is_empty, f"{zone_id} lies in the sea (0.5 m tolerance)")
     zones_utm = unary_union([quiet_utm, buffer_utm])
 
     # 5. Simulated devices.
