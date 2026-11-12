@@ -1,0 +1,8 @@
+{"type":"FeatureCollection","features":[
+{"type":"Feature","properties":{"id":"buoy-01","kind":"acoustic_buoy","name_ru":"Акустический буй 01","simulated":true},"geometry":{"type":"Point","coordinates":[47.766179,44.006027]}},
+{"type":"Feature","properties":{"id":"buoy-02","kind":"acoustic_buoy","name_ru":"Акустический буй 02","simulated":true},"geometry":{"type":"Point","coordinates":[47.672633,43.942785]}},
+{"type":"Feature","properties":{"id":"buoy-03","kind":"acoustic_buoy","name_ru":"Акустический буй 03","simulated":true},"geometry":{"type":"Point","coordinates":[47.719442,44.109163]}},
+{"type":"Feature","properties":{"id":"wq-01","kind":"water_station","name_ru":"Станция воды 01","simulated":true},"geometry":{"type":"Point","coordinates":[47.645327,43.749785]}},
+{"type":"Feature","properties":{"id":"wq-02","kind":"water_station","name_ru":"Станция воды 02","simulated":true},"geometry":{"type":"Point","coordinates":[47.774927,43.899744]}},
+{"type":"Feature","properties":{"id":"wq-03","kind":"water_station","name_ru":"Станция воды 03","simulated":true},"geometry":{"type":"Point","coordinates":[47.52894,43.519795]}}
+]}

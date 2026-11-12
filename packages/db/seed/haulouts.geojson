@@ -1,0 +1,4 @@
+{"type":"FeatureCollection","features":[
+{"type":"Feature","properties":{"id":"chechen","name_ru":"о. Чечень","name_en":"Chechen Island","osm_ref":"way/5227556","candidate":true},"geometry":{"type":"Point","coordinates":[47.713087,43.97016]}},
+{"type":"Feature","properties":{"id":"yaichny","name_ru":"о. Яичный","name_en":"Yaichny Island","osm_ref":"relation/14553380","candidate":true},"geometry":{"type":"Point","coordinates":[47.697498,43.900079]}}
+]}
