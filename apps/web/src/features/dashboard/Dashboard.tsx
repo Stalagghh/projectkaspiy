@@ -15,7 +15,7 @@ import { useLiveAlerts } from './useLiveAlerts';
 // MapLibre needs the browser (WebGL, workers): load it only on the client.
 const MapView = dynamic(() => import('@/features/map/MapView'), {
   ssr: false,
-  loading: () => <div className="map" aria-busy="true" />,
+  loading: () => <div className="map-stage" aria-busy="true" />,
 });
 
 export function Dashboard() {

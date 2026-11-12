@@ -37,6 +37,7 @@ export function AlertDetail({ alert, onClose, onUpdated, onConflict }: Props) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState('');
+  const [spectrogramMissing, setSpectrogramMissing] = useState(false);
 
   const latencyS = Math.max(0, Math.round((Date.parse(alert.createdAt) - Date.parse(alert.eventAt)) / 1000));
   const canAcknowledge = alert.status === 'new';
@@ -132,7 +133,10 @@ export function AlertDetail({ alert, onClose, onUpdated, onConflict }: Props) {
             src={`/api/clips/${alert.clipId}/spectrogram`}
             alt="Спектрограмма записи (лог-мел)"
             data-testid="alert-spectrogram"
+            hidden={spectrogramMissing}
+            onError={() => setSpectrogramMissing(true)}
           />
+          {spectrogramMissing && <p className="alert-meta">Спектрограмма недоступна.</p>}
         </div>
       )}
 

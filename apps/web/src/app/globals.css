@@ -81,7 +81,7 @@ body {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px 20px;
+  gap: 10px 14px;
   padding: 10px 16px;
   background: var(--surface);
   border-bottom: 1px solid var(--line);
@@ -212,7 +212,12 @@ body {
   position: relative;
   min-height: 0;
 }
-.map {
+.map-stage {
+  position: absolute;
+  inset: 0;
+}
+/* Higher specificity than MapLibre's own `.maplibregl-map { position: relative }`. */
+.map-stage .map {
   position: absolute;
   inset: 0;
 }
@@ -243,7 +248,8 @@ body {
   .main {
     grid-template-columns: 1fr;
   }
-  .map-col {
+  .map-stage {
+    position: relative;
     height: 55vh;
   }
   .side {
@@ -465,6 +471,8 @@ body {
 }
 .spectrogram {
   width: 100%;
+  max-height: 240px;
+  object-fit: contain;
   border-radius: 8px;
   border: 1px solid var(--line);
   image-rendering: pixelated;

@@ -22,9 +22,9 @@ export function AlertFeed({ alerts, loadState, selectedId, freshIds, onSelect, o
   const [now, setNow] = useState<number | null>(null);
   useEffect(() => {
     setNow(Date.now());
-    const timer = setInterval(() => setNow(Date.now()), 15_000);
+    const timer = setInterval(() => setNow(Date.now()), 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [alerts]);
 
   if (loadState === 'loading' && alerts.length === 0) {
     return (

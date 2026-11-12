@@ -90,8 +90,10 @@ export function formatDateTime(iso: string): string {
 }
 
 export function formatRelative(iso: string, now: number): string {
-  const seconds = Math.round((Date.parse(iso) - now) / 1000);
+  // Clamp small clock skew between browser and server: never show "in N seconds".
+  const seconds = Math.min(0, Math.round((Date.parse(iso) - now) / 1000));
   const abs = Math.abs(seconds);
+  if (abs < 10) return 'только что';
   if (abs < 60) return relativeFormat.format(seconds, 'second');
   if (abs < 3600) return relativeFormat.format(Math.round(seconds / 60), 'minute');
   if (abs < 86_400) return relativeFormat.format(Math.round(seconds / 3600), 'hour');

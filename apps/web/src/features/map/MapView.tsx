@@ -151,7 +151,9 @@ export default function MapView({ alerts, selectedId, onSelect, subscribeReading
             if (props.kind === 'water_station' && props.sensors.length > 0) {
               const values = document.createElement('span');
               values.className = 'dev-values';
-              for (const sensor of props.sensors) {
+              const order = Object.keys(METRIC_LABEL);
+              const sorted = [...props.sensors].sort((a, b) => order.indexOf(a.metric) - order.indexOf(b.metric));
+              for (const sensor of sorted) {
                 const value = document.createElement('span');
                 value.dataset.sensorId = sensor.sensorId;
                 value.dataset.quality = sensor.quality ?? 'ok';
@@ -294,7 +296,7 @@ export default function MapView({ alerts, selectedId, onSelect, subscribeReading
   }, [selectedId, ready]);
 
   return (
-    <>
+    <div className="map-stage">
       <div ref={containerRef} className="map" role="region" aria-label="Карта заказника" />
       <div className="legend" aria-label="Легенда карты">
         <span className="legend-row">
@@ -324,7 +326,7 @@ export default function MapView({ alerts, selectedId, onSelect, subscribeReading
           {error}
         </div>
       )}
-    </>
+    </div>
   );
 }
 
