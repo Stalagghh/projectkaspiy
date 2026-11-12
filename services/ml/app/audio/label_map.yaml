@@ -1,0 +1,34 @@
+# Mapping from YAMNet / AudioSet classes to our three labels.
+# The service checks at startup that every name below exists in yamnet_class_map.csv
+# (column display_name) and refuses to start otherwise.
+# Score of a label in a window = the highest score among its AudioSet classes.
+# background = 1 - max(boat_engine, gunshot).
+version: "1"
+
+labels:
+  gunshot:
+    - "Gunshot, gunfire"
+    - "Machine gun"
+    - "Fusillade"
+    - "Artillery fire"
+  boat_engine:
+    - "Motorboat, speedboat"
+    - "Boat, Water vehicle"
+    - "Engine"
+    - "Idling"
+    - "Medium engine (mid frequency)"
+    - "Heavy engine (low frequency)"
+
+# PRELIMINARY thresholds. They are NOT tuned on a validation set yet. Starting values were
+# 0.30 / 0.20; they were adjusted by hand on the demo clips and 36 ESC-50 clips of other
+# classes (services/ml/tools/esc50_sanity_check.py), so any false-alarm count on those same
+# clips is optimistic. YAMNet scores come in coarse steps (... 0.33, 0.41, 0.50, 0.59 ...):
+# - boat_engine 0.45 sits between 0.41 and 0.50 and drops the weak hits from helicopter,
+#   wind, waves and rain (scores 0.33-0.41); chainsaw, airplane and loud waves still pass.
+# - gunshot 0.30 stays low on purpose (a missed shot costs more than a false alarm) and drops
+#   one thunderstorm hit at 0.26; fireworks still score as gunshots (0.50-0.85).
+# A window counts as an event when its label score is >= the threshold.
+# Final values come with the model card, tuned on a validation split.
+preliminary_thresholds:
+  boat_engine: 0.45
+  gunshot: 0.30
