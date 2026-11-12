@@ -1,0 +1,37 @@
+[project]
+name = "ecoshield-ml"
+version = "0.1.0"
+description = "EcoShield Caspian ML service: YAMNet audio classification and a simplified seal presence forecast."
+requires-python = "==3.13.*"
+dependencies = [
+    "fastapi==0.162.5",
+    "uvicorn==0.54.0",
+    "pydantic==2.14.3",
+    "pydantic-settings==2.16.2",
+    "numpy==2.5.4",
+    "ai-edge-litert==2.3.0",
+    "soundfile==0.14.0",
+    "soxr==1.1.0",
+    "pillow==13.0.0",
+    "pyyaml==6.0.3",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==9.2.0",
+    "ruff==0.17.4",
+    "httpx==0.28.1",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 110
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

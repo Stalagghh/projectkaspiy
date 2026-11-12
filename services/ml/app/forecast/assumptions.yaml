@@ -1,0 +1,56 @@
+# Seal presence scorecard: every number below is an ASSUMPTION, NOT VALIDATED.
+# Assumption ids refer to docs/PLAN.md section 7.3 and must be checked by ecologists.
+# Model: logit(p) = season(day of year) + sum of factor contributions, p = 1 / (1 + e^-logit).
+# A factor without an assumption id is not allowed (checked by a test).
+model:
+  name: seal-presence-scorecard
+  version: 0.1-simplified
+
+# Presence level cut-offs: low < 0.33 <= medium < 0.66 <= high.
+levels:
+  medium_from: 0.33
+  high_from: 0.66
+
+factors:
+  season:
+    # A-S1, A-S2 (UNVALIDATED). Winter: seals stay on the northern Caspian ice for pupping (A-S1).
+    # Spring (Mar-Apr): they disperse south, partly along the western coast; autumn (Oct-Dec):
+    # they return north (A-S2). Summer: most tagged seals were in the middle and south Caspian
+    # (Dmitrieva et al. 2016, PLAN section 20). Values are log-odds at the middle of each month,
+    # interpolated linearly between months. The shape is partly supported; the numbers are guesses.
+    assumptions: [A-S1, A-S2]
+    unit: day of year
+    monthly_log_odds: [-0.6, -0.5, 0.4, 0.5, -0.6, -1.4, -1.6, -1.4, -0.6, 0.4, 0.8, 0.5]
+  wind:
+    # A-S5 (UNVALIDATED, expert guess). Strong wind lowers haul-out use. Small weight.
+    # contribution = weight * (wind speed - reference)
+    assumptions: [A-S5]
+    unit: m/s
+    reference: 5.0
+    weight_per_unit: -0.08
+  waves:
+    # A-S5 (UNVALIDATED, expert guess). High waves lower haul-out use. Small weight.
+    # contribution = weight * (wave height - reference)
+    assumptions: [A-S5]
+    unit: m
+    reference: 0.5
+    weight_per_unit: -0.4
+  sst:
+    # A-S6 (UNVALIDATED). SST changes slowly, so the last OISST value is carried over the
+    # forecast horizon. Warmer water than the reference is assumed to slightly delay the autumn
+    # return north. Very small weight: the season curve carries most of the temperature signal.
+    # contribution = weight * (sst - reference)
+    assumptions: [A-S6]
+    unit: degC
+    reference: 15.0
+    weight_per_unit: -0.05
+  haulout:
+    # A-S3 (UNVALIDATED). Chechen, Yaichny and Tyuleniy islands are CANDIDATE autumn haul-outs.
+    # Closer to a candidate haul-out raises presence. Small weight: summer foraging is not tied to
+    # haul-outs (PLAN section 7.3). Distances beyond the cap count as the cap.
+    # contribution = weight * (min(distance, cap) - reference)
+    assumptions: [A-S3]
+    unit: km
+    reference: 10.0
+    cap: 30.0
+    weight_per_unit: -0.04
