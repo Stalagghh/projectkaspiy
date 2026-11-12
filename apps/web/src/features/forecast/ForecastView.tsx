@@ -61,8 +61,14 @@ export function ForecastView() {
         signal: controller.signal,
       });
       const body: unknown = await response.json().catch(() => null);
-      if (response.status === 404 && (body as { error?: string } | null)?.error === 'no_forecast') {
+      const errorCode = (body as { error?: string } | null)?.error;
+      if (response.status === 404 && errorCode === 'no_forecast') {
         setState({ status: 'empty' });
+        return;
+      }
+      if (response.status === 404 && errorCode === 'day_out_of_range' && day) {
+        // A newer run with other dates replaced the one on screen: show its first day.
+        void load();
         return;
       }
       if (!response.ok) {
