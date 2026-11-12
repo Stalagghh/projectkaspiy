@@ -1,5 +1,6 @@
 // Applies packages/db/migrations/*.sql in name order, each once, inside a transaction.
 // Run: node packages/db/src/migrate.ts  (needs DATABASE_URL)
+import { realpathSync } from 'node:fs';
 import { readdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -29,16 +30,19 @@ export async function migrate(): Promise<string[]> {
       await client.query('COMMIT');
       applied.push(file);
     } catch (error) {
-      await client.query('ROLLBACK');
+      // If the connection itself broke, ROLLBACK fails too: keep the original error and
+      // drop the broken connection instead of returning it to the pool.
+      const rollbackFailed = await client.query('ROLLBACK').then(() => false, () => true);
+      client.release(rollbackFailed);
       throw new Error(`migration ${file} failed: ${(error as Error).message}`);
-    } finally {
-      client.release();
     }
+    client.release();
   }
   return applied;
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+// Run only when started directly (compare real paths, so symlinked launchers work too).
+if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
   migrate()
     .then((applied) => console.log(`migrate: ${applied.length ? applied.join(', ') : 'up to date'}`))
     .catch((error: unknown) => {
