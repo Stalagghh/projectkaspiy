@@ -15,6 +15,8 @@ import {
 import dynamic from 'next/dynamic';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 
+import { useNow } from '@/lib/useNow';
+
 import {
   type ForecastApiResponse,
   forecastApiResponseSchema,
@@ -48,39 +50,39 @@ export function ForecastView() {
   const [pendingDay, setPendingDay] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const now = useNow();
 
-  const load = useCallback(async (day?: string) => {
+  const load = useCallback(async (requestedDay?: string) => {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
-    setPendingDay(day ?? null);
     try {
-      const query = day ? `?day=${encodeURIComponent(day)}` : '';
-      const response = await fetch(`/api/forecast${query}`, {
-        cache: 'no-store',
-        signal: controller.signal,
-      });
-      const body: unknown = await response.json().catch(() => null);
-      const errorCode = (body as { error?: string } | null)?.error;
-      if (response.status === 404 && errorCode === 'no_forecast') {
-        setState({ status: 'empty' });
+      // If a newer run with other dates replaced the one on screen, the second attempt shows its first day.
+      for (const day of requestedDay ? [requestedDay, undefined] : [undefined]) {
+        const query = day ? `?day=${encodeURIComponent(day)}` : '';
+        const response = await fetch(`/api/forecast${query}`, {
+          cache: 'no-store',
+          signal: controller.signal,
+        });
+        const body: unknown = await response.json().catch(() => null);
+        const errorCode = (body as { error?: string } | null)?.error;
+        if (response.status === 404 && errorCode === 'no_forecast') {
+          setState({ status: 'empty' });
+          return;
+        }
+        if (response.status === 404 && errorCode === 'day_out_of_range' && day) continue;
+        if (!response.ok) {
+          setState({ status: 'error', message: `Сервер ответил ошибкой ${response.status}.` });
+          return;
+        }
+        const parsed = forecastApiResponseSchema.safeParse(body);
+        if (!parsed.success) {
+          setState({ status: 'error', message: 'Данные прогноза пришли в неожиданном формате.' });
+          return;
+        }
+        setState({ status: 'ready', data: parsed.data });
         return;
       }
-      if (response.status === 404 && errorCode === 'day_out_of_range' && day) {
-        // A newer run with other dates replaced the one on screen: show its first day.
-        void load();
-        return;
-      }
-      if (!response.ok) {
-        setState({ status: 'error', message: `Сервер ответил ошибкой ${response.status}.` });
-        return;
-      }
-      const parsed = forecastApiResponseSchema.safeParse(body);
-      if (!parsed.success) {
-        setState({ status: 'error', message: 'Данные прогноза пришли в неожиданном формате.' });
-        return;
-      }
-      setState({ status: 'ready', data: parsed.data });
     } catch (error) {
       if (controller.signal.aborted) return;
       console.error('[forecast]', error);
@@ -91,6 +93,7 @@ export function ForecastView() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- load() sets state only after its fetch settles
     void load();
     return () => abortRef.current?.abort();
   }, [load]);
@@ -160,7 +163,7 @@ export function ForecastView() {
   const { run, day } = data;
   const summary = run.summaries.find((item) => item.date === day);
   const hydrology = run.hydrology.find((item) => item.date === day);
-  const stale = Date.now() - Date.parse(run.issuedAt) > STALE_AFTER_MS;
+  const stale = now !== null && now - Date.parse(run.issuedAt) > STALE_AFTER_MS;
   const topCells = [...data.cells.features]
     .sort((a, b) => b.properties.presence - a.properties.presence)
     .slice(0, 5);
@@ -208,7 +211,10 @@ export function ForecastView() {
                     aria-pressed={pressed}
                     aria-label={`День ${index + 1}: ${formatDayLong(date)}`}
                     onClick={() => {
-                      if (date !== day || pendingDay) void load(date);
+                      if (date !== day || pendingDay) {
+                        setPendingDay(date);
+                        void load(date);
+                      }
                     }}
                     className={`min-h-11 rounded-md border px-2 text-sm tabular-nums focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${
                       pressed

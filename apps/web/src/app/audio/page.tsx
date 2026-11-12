@@ -1,6 +1,8 @@
 // /audio: server shell around the client upload form.
 import type { Metadata } from 'next';
 
+import { TopBar } from '@/components/TopBar';
+
 import { AudioAnalyzer } from '../../features/audio/AudioAnalyzer';
 
 export const metadata: Metadata = {
@@ -9,5 +11,12 @@ export const metadata: Metadata = {
 };
 
 export default function AudioPage() {
-  return <AudioAnalyzer />;
+  return (
+    <>
+      <TopBar />
+      <main>
+        <AudioAnalyzer />
+      </main>
+    </>
+  );
 }
