@@ -68,6 +68,8 @@ Thumbs.db
 
 # Local agent settings (personal, never shared)
 .claude/settings.local.json
+# Skill pack installed locally by the team (see docs/SKILLS.md)
+.opencode
 
 # Local git worktrees for parallel work
 .worktrees/
