@@ -1,0 +1,5 @@
+# Lets `docker compose` work from the repository root. The stack is defined in infra/.
+name: ecoshield
+include:
+  - path: infra/docker-compose.yml
+    env_file: .env
