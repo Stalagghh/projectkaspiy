@@ -1,2 +1,9 @@
+packages:
+  - apps/*
+  - packages/*
+  - services/ingest
+  - services/simulator
 allowBuilds:
   lefthook: false
+minimumReleaseAgeExclude:
+  - maplibre-gl@6.18.0

@@ -10,9 +10,19 @@
   "scripts": {
     "prepare": "lefthook install",
     "test:hygiene": "node --test \"scripts/**/*.test.mjs\"",
-    "hygiene:unpushed": "node scripts/commit-hygiene.mjs unpushed"
+    "hygiene:unpushed": "node scripts/commit-hygiene.mjs unpushed",
+    "check": "bash scripts/check.sh",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "db:migrate": "node packages/db/src/migrate.ts",
+    "db:seed": "node packages/db/src/seed.ts",
+    "demo:start": "node services/simulator/src/cli.ts start night-poacher",
+    "demo:reset": "node packages/db/src/demo-reset.ts",
+    "smoke": "playwright test -c e2e"
   },
   "devDependencies": {
-    "lefthook": "2.2.2"
+    "lefthook": "2.2.2",
+    "@playwright/test": "1.65.0",
+    "@types/node": "24.19.2",
+    "typescript": "6.0.3"
   }
 }

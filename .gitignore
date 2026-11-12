@@ -68,3 +68,6 @@ Thumbs.db
 
 # Local agent settings (personal, never shared)
 .claude/settings.local.json
+
+# Local git worktrees for parallel work
+.worktrees/
