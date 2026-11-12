@@ -15,7 +15,7 @@ import {
 import { getPool } from '@ecoshield/db';
 import type pg from 'pg';
 
-import { classifyAudio, type MlConfig } from './ml.ts';
+import { ClipRejectedError, classifyAudio, type MlConfig } from './ml.ts';
 import { checkClip, decideAlert, qualityOf, unclassifiedAlert, type AlertDecision } from './rules.ts';
 import { isDark } from './sun.ts';
 
@@ -190,7 +190,8 @@ export async function classifyClip(ml: MlConfig, clipId: string): Promise<void> 
   try {
     result = await classifyAudio(ml, clip.audio);
   } catch (error) {
-    await markAwaitingMl(clipId, (error as Error).message);
+    // A clip the ML service cannot read is marked failed (no endless retries); anything else waits for ML.
+    await markUnclassified(clipId, error instanceof ClipRejectedError ? 'failed' : 'awaiting_ml', (error as Error).message);
     return;
   }
 
@@ -340,20 +341,23 @@ async function updateAlert(
   return alertId;
 }
 
-/** Degraded mode: keep the clip for a retry and raise one "unclassified acoustic event" alert at once. */
-async function markAwaitingMl(clipId: string, reason: string): Promise<void> {
+/**
+ * Degraded mode: the clip waits for a retry ("awaiting_ml") or is given up ("failed"), and one
+ * "unclassified acoustic event" alert is raised at once so the operator still sees the event.
+ */
+async function markUnclassified(clipId: string, status: 'awaiting_ml' | 'failed', reason: string): Promise<void> {
   const created = await withTransaction(async (db) => {
     const locked = await db.query<{ status: string }>('SELECT status FROM audio_clips WHERE id = $1 FOR UPDATE', [
       clipId,
     ]);
     if (locked.rows[0]?.status === 'done') return false;
-    await db.query(`UPDATE audio_clips SET status = 'awaiting_ml', error = $2 WHERE id = $1`, [clipId, reason]);
+    await db.query('UPDATE audio_clips SET status = $2, error = $3 WHERE id = $1', [clipId, status, reason]);
     const existing = await db.query('SELECT 1 FROM alerts WHERE clip_id = $1', [clipId]);
     if (existing.rowCount) return false;
     await insertAlert(db, clipId, unclassifiedAlert(), null, null, null);
     return true;
   });
-  console.warn(`ingest: ML unavailable for clip ${clipId} (${reason}); awaiting_ml${created ? ', unclassified alert raised' : ''}`);
+  console.warn(`ingest: clip ${clipId} not classified (${reason}); ${status}${created ? ', unclassified alert raised' : ''}`);
 }
 
 /** Clips to (re)classify: waiting for ML, or left "pending" by a crash more than a minute ago. */
