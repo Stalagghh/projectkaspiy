@@ -291,7 +291,7 @@ export async function classifyClip(ml: MlConfig, clipId: string): Promise<void> 
   });
   if (alert) {
     const what = alert.decision ? `${alert.decision.kind} priority ${alert.decision.priority}` : 'no alert';
-    console.log(`ingest: clip ${clipId} -> ${alert.label}, ${what} (ML ${Date.now() - startedMs} ms)`);
+    console.log(`ingest: clip ${clipId} -> ${alert.label}, ${what} (classified and stored in ${Date.now() - startedMs} ms)`);
   }
 }
 
