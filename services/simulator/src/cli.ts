@@ -19,15 +19,21 @@ if (!token) fail('SIM_CONTROL_TOKEN is not set');
 
 const headers = { authorization: `Bearer ${token}` };
 
+async function call(path: string, method: 'GET' | 'POST'): Promise<Response> {
+  try {
+    return await fetch(`${baseUrl}${path}`, { method, headers, signal: AbortSignal.timeout(10_000) });
+  } catch (error) {
+    fail(`cannot reach the simulator at ${baseUrl}: ${(error as Error).message}`);
+  }
+}
+
 async function readRun(res: Response): Promise<ScenarioRun> {
   const body: unknown = await res.json();
   if (!res.ok) fail(`HTTP ${res.status}: ${JSON.stringify(body)}`);
   return scenarioRunSchema.parse(body);
 }
 
-const started = await readRun(
-  await fetch(`${baseUrl}/scenarios/${scenario.data}/start`, { method: 'POST', headers }),
-);
+const started = await readRun(await call(`/scenarios/${scenario.data}/start`, 'POST'));
 console.log(`run ${started.runId} started at ${started.startedAt}`);
 for (const step of started.steps) console.log(`  step ${step.step} -> ${step.deviceId} at +${step.offsetS}s (${step.clip})`);
 
@@ -37,7 +43,7 @@ let run = started;
 while (run.steps.some((s) => s.publishedAt === null)) {
   if (Date.now() > deadline) fail('timed out waiting for the steps to be published');
   await new Promise((resolve) => setTimeout(resolve, 1000));
-  run = await readRun(await fetch(`${baseUrl}/runs/${started.runId}`, { headers }));
+  run = await readRun(await call(`/runs/${started.runId}`, 'GET'));
 }
 for (const step of run.steps) console.log(`  published ${step.step}: ${step.publishedAt}`);
 console.log('all steps published');
