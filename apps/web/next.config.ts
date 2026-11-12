@@ -14,6 +14,8 @@ const nextConfig: NextConfig = {
   // Workspace packages export TypeScript sources that import siblings with .ts extensions.
   transpilePackages: ['@ecoshield/contracts', '@ecoshield/db'],
   poweredByHeader: false,
+  // next dev only serves its client runtime to localhost by default; tests also use 127.0.0.1.
+  allowedDevOrigins: ['127.0.0.1'],
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },

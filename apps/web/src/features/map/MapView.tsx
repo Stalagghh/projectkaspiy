@@ -27,6 +27,8 @@ import { formatMetric, formatTime, KIND_LABEL, METRIC_LABEL, SEVERITY_LABEL, STA
 const ATTRIBUTION = '© участники OpenStreetMap (ODbL), Protomaps';
 const FALLBACK_CENTER: [number, number] = [47.45, 43.65];
 const PULSE_WINDOW_MS = 60_000;
+/** Alerts at the same buoy overlap: the most severe (and the selected one) stays on top. */
+const SEVERITY_Z: Record<Severity, number> = { info: 1, warning: 2, critical: 3 };
 
 let protocolRegistered = false;
 function registerPmtiles(): void {
@@ -269,6 +271,7 @@ export default function MapView({ alerts, selectedId, onSelect, subscribeReading
       entry.el.dataset.alertId = alert.id;
       entry.el.setAttribute('aria-label', alertLabel(alert));
       entry.el.classList.toggle('is-selected', alert.id === selectedId);
+      entry.marker.getElement().style.zIndex = String(10 + SEVERITY_Z[alert.severity] + (alert.id === selectedId ? 10 : 0));
       entry.marker.setLngLat([alert.location.lon, alert.location.lat]);
       if (entry.severity !== alert.severity) {
         const Icon = SEVERITY_ICON[alert.severity];
