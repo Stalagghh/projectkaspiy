@@ -127,7 +127,8 @@ export async function buildHydrology(dates: string[]): Promise<Hydrology> {
 
 type CellRow = { id: number; lat: number; lon: number; dist_haulout_km: number; dist_coast_km: number };
 
-export async function runForecast(ml: MlConfig): Promise<void> {
+/** Returns false when there was nothing to forecast yet (no cells), so the job retries sooner. */
+export async function runForecast(ml: MlConfig): Promise<boolean> {
   const cells = await getPool().query<CellRow>(
     `SELECT id, ST_Y(centroid) AS lat, ST_X(centroid) AS lon, dist_haulout_km, dist_coast_km
        FROM forecast_cells WHERE area_id = $1 ORDER BY id`,
@@ -135,7 +136,7 @@ export async function runForecast(ml: MlConfig): Promise<void> {
   );
   if (cells.rows.length === 0) {
     console.log('ingest: forecast skipped: no forecast_cells for area agrakhan (seed not loaded)');
-    return;
+    return false;
   }
   const now = new Date();
   const dates = forecastDates(now, DAYS);
@@ -198,15 +199,27 @@ export async function runForecast(ml: MlConfig): Promise<void> {
     return id;
   });
   console.log(`ingest: forecast run ${runId} stored (${days.length} values, model ${response.model.version})`);
+  return true;
 }
+
+/** Retry delay after a failed or skipped run (ML still loading, seed not loaded yet). */
+const RETRY_MS = 60_000;
 
 export function startForecastJob(ml: MlConfig, firstDelayMs: number): { stop(): void } {
   let running = false;
+  let retry: NodeJS.Timeout | undefined;
   const run = (): void => {
     if (running) return;
     running = true;
+    clearTimeout(retry);
     runForecast(ml)
-      .catch((error: unknown) => console.error(`ingest: forecast job failed: ${(error as Error).message}`))
+      .catch((error: unknown) => {
+        console.error(`ingest: forecast job failed: ${(error as Error).message}`);
+        return false;
+      })
+      .then((ok) => {
+        if (!ok) retry = setTimeout(run, RETRY_MS);
+      })
       .finally(() => {
         running = false;
       });
@@ -216,6 +229,7 @@ export function startForecastJob(ml: MlConfig, firstDelayMs: number): { stop(): 
   return {
     stop() {
       clearTimeout(first);
+      clearTimeout(retry);
       clearInterval(every);
     },
   };

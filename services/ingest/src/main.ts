@@ -77,12 +77,15 @@ const health = createServer((req, res) => {
     res.end(JSON.stringify({ error: 'not found' }));
     return;
   }
-  getPool()
+  // The pool has no connect timeout, so the check gives up after 2 s instead of hanging.
+  const timeout = new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 2000).unref());
+  const query = getPool()
     .query('SELECT 1')
     .then(
       () => true,
       () => false,
-    )
+    );
+  Promise.race([query, timeout])
     .then((db) => {
       const mqttOk = client.connected;
       const ok = db && mqttOk;
