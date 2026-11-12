@@ -1,0 +1,30 @@
+# Code owners by review track (see CONTRIBUTING.md).
+#
+# Not active yet: the reviewers' GitHub usernames are still unknown. Replace each
+# placeholder with a real username (for example @name) and uncomment the lines.
+# Every owner needs write access to the repository. The account that opens the
+# pull requests must not be the only owner of any path, because GitHub does not
+# let the author approve their own pull request.
+# The last matching line wins, so the default owner comes first.
+#
+# P: platform and backend (default owner for everything not listed below)
+# *                          @P_USERNAME
+# /infra/                    @P_USERNAME
+# /services/ingest/          @P_USERNAME
+# /services/simulator/       @P_USERNAME
+# /packages/                 @P_USERNAME
+#
+# W: web and UI
+# /apps/web/                 @W_USERNAME
+#
+# M: ML and data manifests
+# /services/ml/              @M_USERNAME
+# /data/manifests/           @M_USERNAME
+#
+# H: hardware
+# /firmware/                 @H_USERNAME
+# /edge/                     @H_USERNAME
+#
+# D: design, QA and pitch (documentation and design tokens)
+# /docs/                     @D_USERNAME
+# /apps/web/src/ui/tokens/   @D_USERNAME
