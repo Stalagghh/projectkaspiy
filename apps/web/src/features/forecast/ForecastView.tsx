@@ -25,7 +25,7 @@ import {
   PRESENCE_CLASSES,
   PRESENCE_RAMP,
 } from './schema';
-import { formatAsOf, formatDayLong, formatDayMonth, formatMoscow, formatPercent, formatWeekday } from './format';
+import { formatAsOf, formatDayLong, formatDayMonth, formatMoscow, formatPresence, formatWeekday } from './format';
 
 const ForecastMap = dynamic(() => import('./ForecastMap'), {
   ssr: false,
@@ -92,7 +92,7 @@ export function ForecastView() {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- load() sets state only after its fetch settles
-    void load();
+    void load(new URLSearchParams(window.location.search).get('day') ?? undefined);
     return () => abortRef.current?.abort();
   }, [load]);
 
@@ -164,7 +164,9 @@ export function ForecastView() {
     .slice(0, 5);
 
   return (
-    <main className="main main-stack">
+    <main className="forecast-page">
+      <header><h1 className="page-title">Прогноз: каспийский тюлень</h1><p className="page-lead">Семь дней · индекс присутствия по ячейкам акватории · шкала 0–1</p></header>
+      <div className="forecast-layout">
       <div className="map-col">
         <div className="map-stage">
           <ForecastMap cells={data.cells} selectedId={selectedId} onSelect={setSelectedId} />
@@ -187,8 +189,8 @@ export function ForecastView() {
         <div className="panel-scroll">
           <header className="section">
             <div>
-              <h1 className="page-title">Прогноз присутствия каспийского тюленя</h1>
-              <p className="page-lead">Индекс присутствия по ячейкам акватории на 7 дней вперёд.</p>
+              <h2 className="side-title">Модель и условия</h2>
+              <p className="page-lead">Прогноз не является вероятностью встречи или наблюдаемой численностью.</p>
             </div>
             <p className="note note-sim">
               <FlaskConical size={16} aria-hidden="true" />
@@ -277,7 +279,7 @@ export function ForecastView() {
                     >
                       <span>Ячейка №{cell.id}</span>
                       <span className="num">
-                        {formatPercent(cell.properties.presence)} · {LEVEL_RU[cell.properties.level]}
+                        {formatPresence(cell.properties.presence)} · {LEVEL_RU[cell.properties.level]}
                       </span>
                     </button>
                   </li>
@@ -317,6 +319,7 @@ export function ForecastView() {
           </p>
         </div>
       </aside>
+      </div>
     </main>
   );
 }

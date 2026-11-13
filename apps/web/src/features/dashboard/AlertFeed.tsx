@@ -1,5 +1,5 @@
 'use client';
-import { RefreshCw, ShieldCheck, TriangleExclamationPoint } from 'lucide-react';
+import { ChevronRight, RefreshCw, ShieldCheck, TriangleExclamationPoint } from 'lucide-react';
 
 import type { AlertDto } from '@ecoshield/contracts';
 
@@ -124,6 +124,7 @@ export function AlertFeed({ alerts, hiddenCount, loadState, selectedId, freshIds
                     </span>
                   </span>
                 </span>
+                <ChevronRight className="event-chevron" size={17} aria-hidden="true" />
               </button>
             </li>
           );

@@ -2,8 +2,6 @@
 // /api/forecast, so the page renders even before the first forecast run exists.
 import type { Metadata } from 'next';
 
-import { TopBar } from '@/components/TopBar';
-
 import { ForecastView } from '../../features/forecast/ForecastView';
 
 export const metadata: Metadata = {
@@ -13,9 +11,6 @@ export const metadata: Metadata = {
 
 export default function ForecastPage() {
   return (
-    <div className="app app-fixed">
-      <TopBar />
-      <ForecastView />
-    </div>
+    <ForecastView />
   );
 }

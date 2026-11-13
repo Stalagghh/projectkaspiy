@@ -31,6 +31,7 @@ export function useLiveAlerts() {
   const [sseState, setSseState] = useState<SseState>('connecting');
   const [lastUpdateAt, setLastUpdateAt] = useState<number | null>(null);
   const [announcement, setAnnouncement] = useState('');
+  const [criticalAnnouncement, setCriticalAnnouncement] = useState('');
   const [freshIds, setFreshIds] = useState<ReadonlySet<string>>(new Set());
   const readingListeners = useRef(new Set<ReadingListener>());
   const loadSeq = useRef(0);
@@ -106,7 +107,8 @@ export function useLiveAlerts() {
         applyAlert(alert);
         if (op === 'created') {
           setFreshIds((ids) => new Set(ids).add(alert.id));
-          setAnnouncement(
+          const announce = alert.severity === 'critical' ? setCriticalAnnouncement : setAnnouncement;
+          announce(
             `Новая тревога: ${KIND_LABEL[alert.kind]}, ${SEVERITY_LABEL[alert.severity]}${
               alert.deviceName ? `, ${alert.deviceName}` : ''
             }`,
@@ -135,6 +137,7 @@ export function useLiveAlerts() {
     sseState,
     lastUpdateAt,
     announcement,
+    criticalAnnouncement,
     freshIds,
     reload: loadAlerts,
     applyAlert,

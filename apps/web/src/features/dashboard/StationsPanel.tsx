@@ -3,11 +3,8 @@
 import { ChevronDown, Droplets } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-import type { ReadingDto } from '@ecoshield/contracts';
-
-import type { DeviceSensor, MapDevice } from '@/features/map/geo-types';
+import type { MapDevice } from '@/features/map/geo-types';
 import { METRIC_LABEL } from '@/lib/labels';
-import { useMediaQuery } from '@/lib/useMediaQuery';
 import { useNow } from '@/lib/useNow';
 
 /** Stations report every 5 s; after this long without a report the row is marked as stale. */
@@ -19,11 +16,10 @@ const COLUMNS = [
   { metric: 'turbidity_ntu', head: 'NTU' },
 ] as const;
 
-type Latest = Pick<DeviceSensor, 'value' | 'ts' | 'quality'>;
-
 type Props = {
   devices: MapDevice[];
-  subscribeReadings: (listener: (reading: ReadingDto) => void) => () => void;
+  loadState?: 'loading' | 'ready' | 'error';
+  onRetry?: () => void;
 };
 
 function formatValue(metric: string, value: number | null): string {
@@ -32,49 +28,66 @@ function formatValue(metric: string, value: number | null): string {
   return new Intl.NumberFormat('ru-RU', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value);
 }
 
-export function StationsPanel({ devices, subscribeReadings }: Props) {
+export function StationsPanel({ devices, loadState, onRetry }: Props) {
   const now = useNow();
-  // Open where there is room (desktop); on a phone the table would hide the map, so it starts closed.
-  const wide = useMediaQuery('(min-width: 900px)', true);
-  const [choice, setChoice] = useState<boolean | null>(null);
-  const open = choice ?? wide;
-  // Readings received after the page loaded, by sensor id. Older values come with `devices`.
-  const [live, setLive] = useState<ReadonlyMap<string, Latest>>(new Map());
-
-  useEffect(
-    () =>
-      subscribeReadings((reading) => {
-        setLive((previous) => {
-          const next = new Map(previous);
-          next.set(reading.sensorId, { value: reading.value, ts: reading.ts, quality: reading.quality });
-          return next;
-        });
-      }),
-    [subscribeReadings],
-  );
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const reveal = () => { if (window.location.hash === '#stations') setOpen(true); };
+    reveal();
+    window.addEventListener('hashchange', reveal);
+    return () => window.removeEventListener('hashchange', reveal);
+  }, []);
+  useEffect(() => {
+    if (!open || window.location.hash !== '#stations') return;
+    const section = document.getElementById('stations');
+    const dashboard = section?.closest('main');
+    if (!section || !dashboard) return;
+    let frame = 0;
+    let active = true;
+    const align = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => { if (active) section.scrollIntoView({ block: 'start' }); });
+    };
+    // Forecast/audio content can finish loading after this section opens. Keep the requested
+    // destination visible during that layout settling, until the user starts another interaction.
+    const observer = new ResizeObserver(align);
+    observer.observe(dashboard);
+    observer.observe(section);
+    const events = ['pointerdown', 'keydown', 'wheel', 'touchstart'] as const;
+    const stop = () => {
+      active = false;
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+      for (const event of events) window.removeEventListener(event, stop);
+    };
+    for (const event of events) window.addEventListener(event, stop, { passive: true });
+    section.focus({ preventScroll: true });
+    align();
+    return stop;
+  }, [open]);
 
   const stations = devices.filter((device) => device.kind === 'water_station');
   const simulated = stations.some((station) => station.isSimulated);
 
   return (
-    <section className="stations map-panel" aria-labelledby="stations-title">
+    <section className="stations overview-panel" id="stations" tabIndex={-1} aria-labelledby="stations-title">
       <h2 className="stations-head" id="stations-title">
         <button
           type="button"
           className="legend-toggle"
           aria-expanded={open}
           aria-controls="stations-body"
-          onClick={() => setChoice(!open)}
+          onClick={() => setOpen(!open)}
         >
           <Droplets size={16} aria-hidden="true" />
-          Качество воды
+          Датчики · качество воды
           {simulated && <span className="chip chip-sim">симуляция</span>}
           <ChevronDown size={16} aria-hidden="true" />
         </button>
       </h2>
       <div className="stations-body" id="stations-body" hidden={!open}>
         {stations.length === 0 ? (
-          <p className="stations-empty">Станции появятся после загрузки карты.</p>
+            <p className="stations-empty">{loadState === 'error' ? 'Не удалось загрузить станции.' : loadState === 'loading' ? 'Загрузка станций…' : 'Станций в реестре пока нет.'}{onRetry && <button className="text-link" type="button" onClick={onRetry}>Повторить</button>}</p>
         ) : (
           <table>
             <thead>
@@ -92,7 +105,7 @@ export function StationsPanel({ devices, subscribeReadings }: Props) {
               {stations.map((station) => {
                 const cells = COLUMNS.map((column) => {
                   const sensor = station.sensors.find((item) => item.metric === column.metric);
-                  const latest = sensor ? (live.get(sensor.sensorId) ?? sensor) : null;
+                  const latest = sensor ?? null;
                   return { metric: column.metric, latest };
                 });
                 const newest = Math.max(0, ...cells.map((cell) => (cell.latest?.ts ? Date.parse(cell.latest.ts) : 0)));

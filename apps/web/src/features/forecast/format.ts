@@ -38,6 +38,7 @@ const moscowFormat = new Intl.DateTimeFormat('ru-RU', {
 const utcDay = (isoDate: string): Date => new Date(`${isoDate}T00:00:00Z`);
 
 export const formatNumber = (value: number): string => numberFormat.format(value);
+export const formatPresence = (value: number): string => value.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /** Contribution to the log-odds with an explicit sign, e.g. "+0,42" or "−0,15". */
 export const formatContribution = (value: number): string =>

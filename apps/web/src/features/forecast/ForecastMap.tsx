@@ -22,7 +22,7 @@ import { basemapLayers, MAP_ATTRIBUTION } from '@/features/map/basemap';
 
 import { CellDetails } from './CellDetails';
 import styles from './forecast.module.css';
-import type { CellCollection, CellFeature } from './schema';
+import { PRESENCE_RAMP, type CellCollection, type CellFeature } from './schema';
 
 const BASEMAP_PATH = '/tiles/agrakhan.pmtiles';
 const CELLS_SOURCE = 'forecast-cells';
@@ -129,26 +129,26 @@ export default function ForecastMap({ cells, selectedId, onSelect }: Props) {
                 ['linear'],
                 ['get', 'presence'],
                 0,
-                '#12263A',
+                PRESENCE_RAMP[0].color,
                 0.33,
-                '#1FA39A',
+                PRESENCE_RAMP[1].color,
                 0.66,
-                '#E3C766',
+                PRESENCE_RAMP[2].color,
                 1,
-                '#FF6A13',
+                PRESENCE_RAMP[3].color,
               ],
               'fill-opacity': [
                 'interpolate',
                 ['linear'],
                 ['get', 'presence'],
                 0,
-                0.12,
+                PRESENCE_RAMP[0].opacity,
                 0.33,
-                0.5,
+                PRESENCE_RAMP[1].opacity,
                 0.66,
-                0.62,
+                PRESENCE_RAMP[2].opacity,
                 1,
-                0.8,
+                PRESENCE_RAMP[3].opacity,
               ],
             },
           },
@@ -156,19 +156,21 @@ export default function ForecastMap({ cells, selectedId, onSelect }: Props) {
             id: 'forecast-cells-outline',
             type: 'line',
             source: CELLS_SOURCE,
-            paint: { 'line-color': '#050D16', 'line-opacity': 0.55, 'line-width': 1 },
+            paint: { 'line-color': '#233b32', 'line-opacity': 0.4, 'line-width': 1 },
           },
           {
             id: SELECTED_LAYER,
             type: 'line',
             source: CELLS_SOURCE,
             filter: ['==', ['get', 'id'], -1],
-            paint: { 'line-color': '#FF6A13', 'line-width': 3 },
+            paint: { 'line-color': '#e6f4d9', 'line-width': 3 },
           },
         ],
       },
     });
-    map.addControl(new NavigationControl({ showCompass: false }), 'bottom-right');
+    map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
+    const resize = new ResizeObserver(() => map.resize());
+    resize.observe(container);
 
     map.on('error', (event) => {
       const sourceId = (event as { sourceId?: string }).sourceId;
@@ -198,6 +200,7 @@ export default function ForecastMap({ cells, selectedId, onSelect }: Props) {
     const node = document.createElement('div');
     const popup = new Popup({
       closeOnClick: false,
+      anchor: 'bottom',
       maxWidth: '300px',
       offset: 8,
       className: styles.popup,
@@ -208,6 +211,7 @@ export default function ForecastMap({ cells, selectedId, onSelect }: Props) {
     setPopupNode(node);
 
     return () => {
+      resize.disconnect();
       popup.remove();
       map.remove();
       mapRef.current = null;
@@ -246,7 +250,8 @@ export default function ForecastMap({ cells, selectedId, onSelect }: Props) {
     const center = cellCenter(selectedCell);
     popup.setLngLat(center);
     if (!popup.isOpen()) popup.addTo(map);
-    if (!map.getBounds().contains(center)) map.easeTo({ center, duration: 300 });
+    // Keep the full explanation within a short map, above its selected cell and controls.
+    map.easeTo({ center, offset: [0, Math.min(110, map.getContainer().clientHeight * 0.27)], duration: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 250 });
   }, [selectedCell, loaded]);
 
   return (
@@ -255,7 +260,7 @@ export default function ForecastMap({ cells, selectedId, onSelect }: Props) {
         ref={containerRef}
         data-testid="forecast-map"
         role="region"
-        aria-label="Карта прогноза присутствия тюленя. Список ячеек с наибольшей вероятностью — в боковой панели."
+        aria-label="Карта модельного индекса присутствия тюленя. Список ячеек с наибольшим индексом — в панели пояснений."
         className="h-full w-full"
       />
       {basemapMissing ? (

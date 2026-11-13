@@ -1,6 +1,6 @@
 // Explanation of one forecast cell: presence, level and the factors that move it most.
 import { FACTOR_RU, LEVEL_RU, type CellFeature } from './schema';
-import { formatContribution, formatNumber, formatPercent } from './format';
+import { formatContribution, formatNumber, formatPresence } from './format';
 
 const TOP_FACTORS = 3;
 
@@ -23,8 +23,8 @@ export function CellDetails({ cell }: { cell: CellFeature }) {
     <div className="text-sm leading-snug" aria-live="polite">
       <p className="text-xs text-[var(--muted)]">Ячейка №{id}</p>
       <p className="mt-1">
-        Индекс присутствия: <strong className="font-mono tabular-nums">{formatPercent(presence)}</strong>{' '}
-        — {LEVEL_RU[level]} вероятность
+        Индекс присутствия: <strong className="tabular-nums">{formatPresence(presence)}</strong> из 1{' '}
+        — {LEVEL_RU[level]} уровень
       </p>
       {top.length > 0 ? (
         <>

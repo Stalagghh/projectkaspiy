@@ -68,15 +68,14 @@ export function ScenarioButton({ scenario }: { scenario: Scenario }) {
   return (
     <button
       type="button"
-      className="btn btn-primary"
+      className="btn scenario-button"
       data-testid="start-scenario"
       aria-label="Запустить сценарий «Ночной браконьер»"
       onClick={scenario.start}
       disabled={starting || scenario.running}
     >
       {starting ? <LoaderCircle size={16} className="spin" aria-hidden="true" /> : <Play size={16} aria-hidden="true" />}
-      <span className="btn-label-long">Сценарий «Ночной браконьер»</span>
-      <span className="btn-label-short">Сценарий</span>
+      <span>Демо-сценарий</span>
     </button>
   );
 }

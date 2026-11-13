@@ -3,7 +3,7 @@
 // The map instance lives in a ref and is created once; live updates only touch marker DOM.
 import 'maplibre-gl/dist/maplibre-gl.css';
 
-import { ChevronDown, Droplets, FlaskConical, Layers, Radio } from 'lucide-react';
+import { ChevronDown, Droplets, FlaskConical, Layers, Map as MapIcon, Radio } from 'lucide-react';
 import {
   addProtocol,
   Map as MapLibreMap,
@@ -24,7 +24,7 @@ import { SEVERITY_ICON } from '@/features/dashboard/SeverityBadge';
 import { basemapLayers, MAP_ATTRIBUTION } from '@/features/map/basemap';
 import type { MapDevice, MapGeo } from '@/features/map/geo-types';
 import { AUDIO_LABEL, formatPercent, formatTime, KIND_LABEL, SEVERITY_LABEL, STATUS_LABEL } from '@/lib/labels';
-import { useMediaQuery } from '@/lib/useMediaQuery';
+import { useNow } from '@/lib/useNow';
 
 const FALLBACK_CENTER: [number, number] = [47.45, 43.65];
 /** Open sea east of the Agrakhan peninsula: where the name of the sea is written. */
@@ -35,8 +35,6 @@ const SEVERITY_Z: Record<Severity, number> = { info: 1, warning: 2, critical: 3 
 const STACK_STEP_PX = 22;
 /** Further alerts at the same place sit under the last fanned-out one. */
 const STACK_MAX = 3;
-/** Width of the alert card plus its margin (see .detail-overlay in globals.css). */
-const CARD_WIDTH_PX = 464;
 
 let protocolRegistered = false;
 function registerPmtiles(): void {
@@ -70,8 +68,7 @@ type Props = {
   onSelect: (id: string) => void;
   /** Called once with the devices of the area, for panels outside the map. */
   onDevices?: (devices: MapDevice[]) => void;
-  /** The alert card covers the right side of the map on wide screens. */
-  detailOpen?: boolean;
+  devices?: MapDevice[];
 };
 
 const isOpenAlert = (alert: AlertDto): boolean => alert.status !== 'resolved' && alert.status !== 'false_positive';
@@ -94,7 +91,8 @@ function formatCursor(lat: number, lon: number): string {
   return `${lat.toFixed(4)}° с. ш.  ${lon.toFixed(4)}° в. д.`;
 }
 
-export default function MapView({ alerts, selectedId, onSelect, onDevices, detailOpen = false }: Props) {
+export default function MapView({ alerts, selectedId, onSelect, onDevices, devices }: Props) {
+  const now = useNow();
   const containerRef = useRef<HTMLDivElement>(null);
   const coordsRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
@@ -103,10 +101,8 @@ export default function MapView({ alerts, selectedId, onSelect, onDevices, detai
   const onDevicesRef = useRef(onDevices);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // The legend starts open where there is room for it; the user's choice wins afterwards.
-  const wide = useMediaQuery('(min-width: 900px)', true);
-  const [legendChoice, setLegendChoice] = useState<boolean | null>(null);
-  const legendOpen = legendChoice ?? wide;
+  const [legendOpen, setLegendOpen] = useState(false);
+  const [visibility, setVisibility] = useState({ reserve: true, zones: true, devices: true, alerts: true });
 
   useEffect(() => {
     onSelectRef.current = onSelect;
@@ -118,16 +114,23 @@ export default function MapView({ alerts, selectedId, onSelect, onDevices, detai
     const container = containerRef.current;
     if (!container) return;
     registerPmtiles();
-    const map = new MapLibreMap({
+    let map: MapLibreMap;
+    try { map = new MapLibreMap({
       container,
       style: buildStyle(),
       center: FALLBACK_CENTER,
       zoom: 9,
       attributionControl: { compact: false },
-    });
+    }); } catch {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- surface failure of an external WebGL resource
+      setError('WebGL недоступен. События и показания доступны в списках.');
+      return;
+    }
     mapRef.current = map;
-    map.addControl(new NavigationControl({ showCompass: false }), 'bottom-right');
+    map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
     map.addControl(new ScaleControl({ unit: 'metric', maxWidth: 110 }), 'bottom-right');
+    const resize = new ResizeObserver(() => map.resize());
+    resize.observe(container);
 
     const showCoords = (lat: number, lon: number) => {
       if (coordsRef.current) coordsRef.current.textContent = formatCursor(lat, lon);
@@ -144,6 +147,8 @@ export default function MapView({ alerts, selectedId, onSelect, onDevices, detai
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return (await response.json()) as MapGeo;
     });
+    // Attach rejection immediately, even if WebGL takes longer than the API to start.
+    void geoPromise.catch(() => undefined);
 
     map.on('load', () => {
       geoPromise
@@ -171,9 +176,10 @@ export default function MapView({ alerts, selectedId, onSelect, onDevices, detai
             const el = document.createElement('div');
             el.className = 'dev-marker';
             el.dataset.kind = device.kind;
-            el.dataset.deviceId = device.id;
+             el.dataset.deviceId = device.id;
+            el.dataset.fresh = String(device.lastSeenAt !== null && Date.now() - Date.parse(device.lastSeenAt) <= 20_000);
             el.setAttribute('role', 'img');
-            el.setAttribute('aria-label', `${isStation ? 'Станция качества воды' : 'Акустический буй'}: ${device.name}`);
+            el.setAttribute('aria-label', `${isStation ? 'Станция качества воды' : 'Акустический буй'}: ${device.name}, ${el.dataset.fresh === 'true' ? 'свежие данные' : 'свежесть неизвестна'}`);
             const glyph = document.createElement('span');
             glyph.className = 'dev-glyph';
             el.append(glyph);
@@ -200,7 +206,7 @@ export default function MapView({ alerts, selectedId, onSelect, onDevices, detai
                 [west, south],
                 [east, north],
               ],
-              { padding: 48, duration: 0 },
+              { padding: { top: 68, bottom: 34, left: 40, right: 40 }, duration: 0 },
             );
           }
           setReady(true);
@@ -211,11 +217,13 @@ export default function MapView({ alerts, selectedId, onSelect, onDevices, detai
     });
     map.on('error', (event) => {
       console.warn('[map]', event.error?.message);
+      if (String(event.error?.message).includes('pmtiles')) setError('Векторная подложка недоступна. Показаны географические слои.');
     });
 
     const markers = alertMarkers.current;
     return () => {
       disposed = true;
+      resize.disconnect();
       for (const marker of overlay.markers) marker.remove();
       for (const { marker, root } of markers.values()) {
         marker.remove();
@@ -303,65 +311,57 @@ export default function MapView({ alerts, selectedId, onSelect, onDevices, detai
     }
   }, [alerts, selectedId, ready]);
 
-  // Bring the selected alert into view, in the part of the map that the alert card leaves free.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
-    const padding = { top: 0, bottom: 0, left: 0, right: detailOpen && wide ? CARD_WIDTH_PX : 0 };
+    const groups = { reserve: ['area-fill', 'area-line', 'ops-line'], zones: ['zones-buffer-line', 'zones-no-entry-fill', 'zones-no-entry-line'] } as const;
+    for (const [group, ids] of Object.entries(groups)) for (const id of ids) map.setLayoutProperty(id, 'visibility', visibility[group as keyof typeof groups] ? 'visible' : 'none');
+  }, [visibility, ready]);
+
+  useEffect(() => {
+    if (!ready || !devices) return;
+    for (const el of containerRef.current?.querySelectorAll<HTMLElement>('.dev-marker') ?? []) {
+      const device = devices.find((item) => item.id === el.dataset.deviceId);
+      const fresh = now !== null && device?.lastSeenAt && now - Date.parse(device.lastSeenAt) <= 20_000;
+      el.dataset.fresh = String(Boolean(fresh));
+      el.setAttribute('aria-label', `${device?.name ?? 'Датчик'}: ${fresh ? 'свежие данные' : 'нет свежих данных, статус неизвестен'}`);
+    }
+  }, [devices, ready, now]);
+
+  // Bring the selected event into view without recreating the map.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    const padding = { top: 0, bottom: 0, left: 0, right: 0 };
+    const duration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 300;
     const alert = alerts.find((item) => item.id === selectedId);
     if (alert?.location) {
-      map.easeTo({ center: [alert.location.lon, alert.location.lat], padding, duration: 450 });
+      map.easeTo({ center: [alert.location.lon, alert.location.lat], padding, duration });
     } else {
-      map.easeTo({ padding, duration: 300 });
+      map.easeTo({ padding, duration });
     }
     // Only when the selection changes, not on every list update.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId, detailOpen, wide, ready]);
+  }, [selectedId, ready]);
 
   return (
-    <div className="map-stage">
+    <div className="map-stage" data-devices={visibility.devices} data-alerts={visibility.alerts}>
       <div ref={containerRef} className="map" role="region" aria-label="Карта заказника" />
       <div className="map-top">
+        <div className="map-tools">
+        <span className="map-title map-panel"><MapIcon size={15} aria-hidden="true" /> Карта территории</span>
+        <div className="legend map-panel">
+          <button type="button" className="legend-toggle" aria-expanded={legendOpen} aria-controls="map-legend" onClick={() => setLegendOpen(!legendOpen)}><Layers size={15} aria-hidden="true" /> Слои <ChevronDown size={14} aria-hidden="true" /></button>
+          <div className="legend-body" id="map-legend" hidden={!legendOpen}>
+            {([{ key: 'reserve', label: 'Граница заказника · OSM' }, { key: 'zones', label: 'Зоны режима · иллюстративно' }, { key: 'devices', label: 'Датчики' }, { key: 'alerts', label: 'События' }] as const).map(({ key, label }) => <label className="legend-row" key={key}><input type="checkbox" checked={visibility[key]} onChange={(event) => setVisibility((previous) => ({ ...previous, [key]: event.target.checked }))} />{label}</label>)}
+            <span className="legend-note">Зоны, акватория и позиции устройств — иллюстративные. Подложка — векторная карта.</span>
+          </div>
+        </div>
+        </div>
         <span className="chip chip-sim map-sim">
           <FlaskConical size={14} aria-hidden="true" />
           Датчики и сценарий — симуляция
         </span>
-        <div className="legend map-panel">
-          <button
-            type="button"
-            className="legend-toggle"
-            aria-expanded={legendOpen}
-            aria-controls="map-legend"
-            onClick={() => setLegendChoice(!legendOpen)}
-          >
-            <Layers size={16} aria-hidden="true" />
-            Легенда
-            <ChevronDown size={16} aria-hidden="true" />
-          </button>
-          <div className="legend-body" id="map-legend" hidden={!legendOpen}>
-            <span className="legend-row">
-              <span className="legend-swatch" style={{ background: 'rgb(31 163 154 / 0.2)', border: '2px solid #5FD4C9' }} />
-              Граница заказника (OpenStreetMap)
-            </span>
-            <span className="legend-row">
-              <span className="legend-swatch" style={{ background: 'rgb(255 75 62 / 0.28)', border: '2px solid #FF4B3E' }} />
-              Зона покоя — вход запрещён
-            </span>
-            <span className="legend-row">
-              <span className="legend-swatch" style={{ border: '2px solid #F5B400' }} />
-              Буферная зона
-            </span>
-            <span className="legend-row">
-              <span className="legend-swatch" style={{ border: '2px dashed #CDBB94' }} />
-              Операционная акватория
-            </span>
-            <span className="legend-row">
-              <span className="legend-swatch" style={{ background: '#E6EDF2', borderRadius: '50%', width: 10, height: 10, margin: '0 5px' }} />
-              Возможное лежбище тюленя
-            </span>
-            <span className="legend-note">Зоны, акватория и позиции устройств — иллюстративные</span>
-          </div>
-        </div>
       </div>
       <div ref={coordsRef} className="map-coords mono" aria-hidden="true" />
       {error && (
@@ -381,39 +381,39 @@ function addOverlays(map: MapLibreMap, geo: MapGeo): void {
   map.addSource('zones', { type: 'geojson', data: geo.zones as GeoJSONData });
   map.addSource('haulouts', { type: 'geojson', data: geo.haulouts as GeoJSONData });
 
-  map.addLayer({ id: 'area-fill', type: 'fill', source: 'area', paint: { 'fill-color': '#1FA39A', 'fill-opacity': 0.1 } });
+  map.addLayer({ id: 'area-fill', type: 'fill', source: 'area', paint: { 'fill-color': '#6aaf80', 'fill-opacity': 0.14 } });
   map.addLayer({
     id: 'area-line',
     type: 'line',
     source: 'area',
-    paint: { 'line-color': '#5FD4C9', 'line-width': 1.75, 'line-opacity': 0.9 },
+    paint: { 'line-color': '#8dbf9c', 'line-width': 1.75, 'line-opacity': 0.9 },
   });
   map.addLayer({
     id: 'ops-line',
     type: 'line',
     source: 'ops-area',
-    paint: { 'line-color': '#CDBB94', 'line-width': 1.25, 'line-opacity': 0.8, 'line-dasharray': [3, 3] },
+    paint: { 'line-color': '#8b9a8b', 'line-width': 1, 'line-opacity': 0.7, 'line-dasharray': [3, 3] },
   });
   map.addLayer({
     id: 'zones-buffer-line',
     type: 'line',
     source: 'zones',
     filter: ['==', ['get', 'kind'], 'buffer'],
-    paint: { 'line-color': '#F5B400', 'line-width': 1.75 },
+    paint: { 'line-color': '#c5b383', 'line-width': 1.25 },
   });
   map.addLayer({
     id: 'zones-no-entry-fill',
     type: 'fill',
     source: 'zones',
     filter: ['==', ['get', 'kind'], 'no_entry'],
-    paint: { 'fill-color': '#FF4B3E', 'fill-opacity': 0.2 },
+    paint: { 'fill-color': '#e64949', 'fill-opacity': 0.12 },
   });
   map.addLayer({
     id: 'zones-no-entry-line',
     type: 'line',
     source: 'zones',
     filter: ['==', ['get', 'kind'], 'no_entry'],
-    paint: { 'line-color': '#FF4B3E', 'line-width': 1.75 },
+    paint: { 'line-color': '#ce7270', 'line-width': 1.25 },
   });
   map.addLayer({
     id: 'haulouts',

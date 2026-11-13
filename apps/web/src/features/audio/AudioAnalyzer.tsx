@@ -3,7 +3,9 @@
 // The file goes to POST /api/audio/classify as raw bytes; nothing is stored and no alert is made.
 import { type ClassifyResponse, classifyResponseSchema } from '@ecoshield/contracts';
 import { AudioLines, FileMusic, Info, LoaderCircle, TriangleExclamationPoint, Upload } from 'lucide-react';
-import { type CSSProperties, type DragEvent, useRef, useState } from 'react';
+import { type CSSProperties, type DragEvent, useEffect, useRef, useState } from 'react';
+
+import { ClipPlayer } from './ClipPlayer';
 
 import {
   ACCEPT_ATTRIBUTE,
@@ -203,7 +205,7 @@ export function AudioAnalyzer() {
       </div>
 
       {state.status === 'done' ? (
-        <AudioResult result={state.result} />
+        <AudioResult result={state.result} file={file} />
       ) : (
         <div className="result-placeholder">
           <AudioLines size={30} aria-hidden="true" />
@@ -215,7 +217,18 @@ export function AudioAnalyzer() {
   );
 }
 
-function AudioResult({ result }: { result: ClassifyResponse }) {
+function UploadedRecording({ file }: { file: File }) {
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+    const url = URL.createObjectURL(file);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- browser-owned resource with symmetric cleanup
+    setSrc(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+  return src ? <ClipPlayer key={src} src={src} label={`Загруженная запись: ${file.name}`} /> : null;
+}
+
+function AudioResult({ result, file }: { result: ClassifyResponse; file: File | null }) {
   const { summary } = result;
   const label = AUDIO_LABEL_RU[summary.label] ?? summary.label;
   const qualitative = QUALITATIVE_RU[summary.qualitative] ?? summary.qualitative;
@@ -263,6 +276,7 @@ function AudioResult({ result }: { result: ClassifyResponse }) {
         </p>
       </div>
 
+      {file && <UploadedRecording file={file} />}
       {result.spectrogramPng ? (
         <figure className="section" style={{ margin: 0 }}>
           {/* eslint-disable-next-line @next/next/no-img-element -- inline data URL from the ML service */}

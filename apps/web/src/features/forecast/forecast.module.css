@@ -1,31 +1,31 @@
-/* Dark popup for the forecast map (MapLibre renders a white popup by default). */
+/* Shared light surface for geographic details. */
 .popup :global(.maplibregl-popup-content) {
-  background: var(--raised, #12263a);
-  color: var(--text, #e9eef1);
-  border: 1px solid rgb(233 238 241 / 0.16);
-  border-radius: 8px;
-  padding: 12px 32px 12px 14px;
-  box-shadow: 0 8px 24px rgb(0 0 0 / 0.45);
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px 44px 16px 18px;
+  box-shadow: var(--shadow-pop);
 }
 .popup :global(.maplibregl-popup-close-button) {
-  color: var(--text, #e9eef1);
+  color: var(--text);
   font-size: 20px;
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
 }
 .popup:global(.maplibregl-popup-anchor-top) :global(.maplibregl-popup-tip),
 .popup:global(.maplibregl-popup-anchor-top-left) :global(.maplibregl-popup-tip),
 .popup:global(.maplibregl-popup-anchor-top-right) :global(.maplibregl-popup-tip) {
-  border-bottom-color: var(--raised, #12263a);
+  border-bottom-color: var(--surface);
 }
 .popup:global(.maplibregl-popup-anchor-bottom) :global(.maplibregl-popup-tip),
 .popup:global(.maplibregl-popup-anchor-bottom-left) :global(.maplibregl-popup-tip),
 .popup:global(.maplibregl-popup-anchor-bottom-right) :global(.maplibregl-popup-tip) {
-  border-top-color: var(--raised, #12263a);
+  border-top-color: var(--surface);
 }
 .popup:global(.maplibregl-popup-anchor-left) :global(.maplibregl-popup-tip) {
-  border-right-color: var(--raised, #12263a);
+  border-right-color: var(--surface);
 }
 .popup:global(.maplibregl-popup-anchor-right) :global(.maplibregl-popup-tip) {
-  border-left-color: var(--raised, #12263a);
+  border-left-color: var(--surface);
 }

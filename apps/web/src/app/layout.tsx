@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
 import type { ReactNode } from 'react';
 
+import { AppShell } from '@/components/AppShell';
+
 import './globals.css';
 
 // IBM Plex Sans and IBM Plex Mono (PLAN.md section 14): one superfamily with full Cyrillic.
@@ -29,14 +31,14 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0A1724',
-  colorScheme: 'dark',
+  themeColor: '#F3F5F7',
+  colorScheme: 'light',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ru" className={`${plexSans.variable} ${plexMono.variable}`}>
-      <body>{children}</body>
+      <body><AppShell>{children}</AppShell></body>
     </html>
   );
 }

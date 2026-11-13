@@ -109,8 +109,12 @@ test('night poacher scenario: real classification, live alerts within 3 s, card,
   await expect(detail.getByTestId('alert-status')).toHaveAttribute('data-status', 'acknowledged');
   await detail.getByTestId('action-resolve').click();
   await expect(detail.getByTestId('alert-status')).toHaveAttribute('data-status', 'resolved');
+  expect(await detail.evaluate((node) => node.contains(document.activeElement))).toBe(true);
   const after = await (await request.get(`/api/alerts/${gunshot.id}`)).json();
   expect(after.status).toBe('resolved');
+  // Details now use an accessible modal: close it before selecting another event in the feed.
+  await page.getByRole('button', { name: 'Закрыть карточку тревоги' }).click();
+  await expect(detail).toHaveCount(0);
 
   // The inspector can overrule the model: the boat alert is marked as a false alarm.
   const boat = found.boat_in_no_entry_zone!.seen;

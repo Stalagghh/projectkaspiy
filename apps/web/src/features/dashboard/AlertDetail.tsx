@@ -1,6 +1,6 @@
 'use client';
 import { Check, CircleCheck, EarOff, LoaderCircle, X } from 'lucide-react';
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { useState, useTransition } from 'react';
 
 import type { ActionResult, AlertDto, AlertStatus } from '@ecoshield/contracts';
 
@@ -48,17 +48,6 @@ export function AlertDetail({ alert, onClose, onUpdated, onConflict }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const [spectrogramMissing, setSpectrogramMissing] = useState(false);
-  const titleRef = useRef<HTMLHeadingElement>(null);
-
-  // The card opens next to the map: move focus into it and let Escape close it.
-  useEffect(() => {
-    titleRef.current?.focus({ preventScroll: true });
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
 
   const latencyS = Math.max(0, Math.round((Date.parse(alert.createdAt) - Date.parse(alert.eventAt)) / 1000));
   const canAcknowledge = alert.status === 'new';
@@ -102,7 +91,7 @@ export function AlertDetail({ alert, onClose, onUpdated, onConflict }: Props) {
             <X size={20} aria-hidden="true" />
           </button>
         </div>
-        <h2 id="alert-detail-title" ref={titleRef} tabIndex={-1}>
+        <h2 id="alert-detail-title" tabIndex={-1}>
           {KIND_LABEL[alert.kind]}
         </h2>
         <p className="detail-place">{place}</p>

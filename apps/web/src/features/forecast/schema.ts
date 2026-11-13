@@ -83,23 +83,23 @@ export const forecastErrorSchema = z.object({ error: z.string() });
 
 /** Legend classes of the presence index. Breaks match the colour ramp in the map layer. */
 export const PRESENCE_CLASSES = [
-  { level: 'low', from: 0, to: 0.33, labelRu: 'низкая' },
-  { level: 'medium', from: 0.33, to: 0.66, labelRu: 'средняя' },
-  { level: 'high', from: 0.66, to: 1, labelRu: 'высокая' },
+  { level: 'low', from: 0, to: 0.33, labelRu: 'низкий' },
+  { level: 'medium', from: 0.33, to: 0.66, labelRu: 'средний' },
+  { level: 'high', from: 0.66, to: 1, labelRu: 'высокий' },
 ] as const satisfies ReadonlyArray<{ level: ForecastLevel; from: number; to: number; labelRu: string }>;
 
-/** Colour stops of the presence ramp: transparent navy, teal, pale yellow, international orange. */
+/** Sequential green ramp: higher intensity means a higher model index, not alert severity. */
 export const PRESENCE_RAMP = [
-  { at: 0, color: '#12263A', opacity: 0.12 },
-  { at: 0.33, color: '#1FA39A', opacity: 0.5 },
-  { at: 0.66, color: '#E3C766', opacity: 0.62 },
-  { at: 1, color: '#FF6A13', opacity: 0.8 },
+  { at: 0, color: '#c0d0c4', opacity: 1 },
+  { at: 0.33, color: '#93b09e', opacity: 1 },
+  { at: 0.66, color: '#57896d', opacity: 1 },
+  { at: 1, color: '#286246', opacity: 1 },
 ] as const;
 
 export const LEVEL_RU: Record<ForecastLevel, string> = {
-  low: 'низкая',
-  medium: 'средняя',
-  high: 'высокая',
+  low: 'низкий',
+  medium: 'средний',
+  high: 'высокий',
 };
 
 export const FACTOR_RU: Record<string, string> = {
