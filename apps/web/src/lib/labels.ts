@@ -19,7 +19,7 @@ export const STATUS_LABEL: Record<AlertStatus, string> = {
   acknowledged: 'Принята',
   assigned: 'Назначен патруль',
   resolved: 'Решена',
-  false_positive: 'Ложное срабатывание',
+  false_positive: 'Ложная тревога',
 };
 
 export const AUDIO_LABEL: Record<string, string> = {
@@ -79,6 +79,11 @@ const dateTimeFormat = new Intl.DateTimeFormat('ru-RU', {
 const relativeFormat = new Intl.RelativeTimeFormat('ru-RU', { numeric: 'auto' });
 const percentFormat = new Intl.NumberFormat('ru-RU', { style: 'percent', maximumFractionDigits: 0 });
 
+/** "16:20:11" (Moscow time; the top bar clock names the time zone). */
+export function formatClock(iso: string): string {
+  return timeFormat.format(new Date(iso));
+}
+
 /** "16:20:11 МСК" */
 export function formatTime(iso: string): string {
   return `${timeFormat.format(new Date(iso))} МСК`;
@@ -100,8 +105,9 @@ export function formatRelative(iso: string, now: number): string {
   return relativeFormat.format(Math.round(seconds / 86_400), 'day');
 }
 
+/** "92 %" with a narrow no-break space, which also reads well in the monospace face. */
 export function formatPercent(value: number): string {
-  return percentFormat.format(value);
+  return percentFormat.format(value).replace('\u00a0', '\u202f');
 }
 
 export function formatMetric(metric: string, value: number | null): string {

@@ -112,6 +112,15 @@ test('night poacher scenario: real classification, live alerts within 3 s, card,
   const after = await (await request.get(`/api/alerts/${gunshot.id}`)).json();
   expect(after.status).toBe('resolved');
 
+  // The inspector can overrule the model: the boat alert is marked as a false alarm.
+  const boat = found.boat_in_no_entry_zone!.seen;
+  await page.locator(`[data-testid="alert-item"][data-alert-id="${boat.id}"]`).click();
+  await expect(detail).toHaveAttribute('data-alert-id', boat.id);
+  await detail.getByTestId('action-false-positive').click();
+  await expect(detail.getByTestId('alert-status')).toHaveAttribute('data-status', 'false_positive');
+  const overruled = await (await request.get(`/api/alerts/${boat.id}`)).json();
+  expect(overruled.status).toBe('false_positive');
+
   mkdirSync(join(HERE, 'results'), { recursive: true });
   writeFileSync(join(HERE, 'results', 'latency.json'), JSON.stringify({ measuredAt: new Date().toISOString(), latenciesMs: latencies }, null, 2));
   console.log(`alert latency (device event -> on screen), ms: ${JSON.stringify(latencies)}`);

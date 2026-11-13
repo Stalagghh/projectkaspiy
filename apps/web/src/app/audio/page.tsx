@@ -12,11 +12,11 @@ export const metadata: Metadata = {
 
 export default function AudioPage() {
   return (
-    <>
+    <div className="app">
       <TopBar />
       <main>
         <AudioAnalyzer />
       </main>
-    </>
+    </div>
   );
 }

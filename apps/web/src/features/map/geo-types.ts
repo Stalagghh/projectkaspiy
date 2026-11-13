@@ -21,3 +21,13 @@ export type MapGeo = {
   /** [west, south, east, north] of the operational area, or null when not seeded. */
   opsBounds: [number, number, number, number] | null;
 };
+
+/** Properties of one feature of `MapGeo.devices`. */
+export type MapDevice = {
+  id: string;
+  kind: 'acoustic_buoy' | 'water_station' | (string & {});
+  name: string;
+  isSimulated: boolean;
+  lastSeenAt: string | null;
+  sensors: DeviceSensor[];
+};

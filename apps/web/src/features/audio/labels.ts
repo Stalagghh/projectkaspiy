@@ -1,7 +1,7 @@
 // Russian texts for the audio analysis screen.
 
 export const AUDIO_LABEL_RU: Record<string, string> = {
-  boat_engine: 'Мотор лодки',
+  boat_engine: 'Моторная лодка',
   gunshot: 'Выстрел',
   background: 'Фон',
 };

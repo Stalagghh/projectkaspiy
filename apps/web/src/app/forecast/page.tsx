@@ -13,11 +13,9 @@ export const metadata: Metadata = {
 
 export default function ForecastPage() {
   return (
-    <>
+    <div className="app app-fixed">
       <TopBar />
-      <main>
-        <ForecastView />
-      </main>
-    </>
+      <ForecastView />
+    </div>
   );
 }

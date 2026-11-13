@@ -49,3 +49,23 @@ export async function resolveAlert(input: unknown): Promise<ActionResult<AlertDt
   );
   return rowCount ? success(alertId) : failure(alertId);
 }
+
+/**
+ * new | acknowledged -> false_positive: the inspector listened and disagrees with the model.
+ * The alert and its clip stay in the database with this status; nothing is retrained from it yet.
+ */
+export async function markFalsePositive(input: unknown): Promise<ActionResult<AlertDto>> {
+  const parsed = alertActionSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'invalid' };
+  const { alertId, version, note } = parsed.data;
+  const cleanNote = note?.trim() ? note.trim() : null;
+  const { rowCount } = await getPool().query(
+    `UPDATE alerts
+        SET status = 'false_positive', version = version + 1, updated_at = now(), resolved_at = now(),
+            resolution_note = $3
+      WHERE id = $1 AND version = $2 AND status IN ('new', 'acknowledged')
+      RETURNING id`,
+    [alertId, version, cleanNote],
+  );
+  return rowCount ? success(alertId) : failure(alertId);
+}

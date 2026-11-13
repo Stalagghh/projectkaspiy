@@ -1,16 +1,19 @@
 'use client';
-import { FlaskConical } from 'lucide-react';
+import { Info, OctagonExclamationPoint, TriangleExclamationPoint } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useState } from 'react';
 
-import type { AlertDto } from '@ecoshield/contracts';
+import type { AlertDto, Severity } from '@ecoshield/contracts';
 
 import { TopBar } from '@/components/TopBar';
+import type { MapDevice } from '@/features/map/geo-types';
+import { SEVERITY_LABEL } from '@/lib/labels';
 
 import { AlertDetail } from './AlertDetail';
 import { AlertFeed } from './AlertFeed';
 import { LiveIndicator } from './LiveIndicator';
-import { ScenarioButton } from './ScenarioButton';
+import { ScenarioButton, ScenarioProgress, useScenario } from './ScenarioButton';
+import { StationsPanel } from './StationsPanel';
 import { useLiveAlerts } from './useLiveAlerts';
 
 // MapLibre needs the browser (WebGL, workers): load it only on the client.
@@ -19,12 +22,29 @@ const MapView = dynamic(() => import('@/features/map/MapView'), {
   loading: () => <div className="map-stage" aria-busy="true" />,
 });
 
+type Filter = 'active' | 'all';
+
+/** An alert stays in the inspector's queue until it is resolved or marked as a false alarm. */
+const isActive = (alert: AlertDto): boolean => alert.status !== 'resolved' && alert.status !== 'false_positive';
+
+const TALLY: ReadonlyArray<{ severity: Severity; Icon: typeof Info }> = [
+  { severity: 'critical', Icon: OctagonExclamationPoint },
+  { severity: 'warning', Icon: TriangleExclamationPoint },
+  { severity: 'info', Icon: Info },
+];
+
 export function Dashboard() {
   const live = useLiveAlerts();
+  const scenario = useScenario();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [extraAlert, setExtraAlert] = useState<AlertDto | null>(null);
+  const [filter, setFilter] = useState<Filter>('active');
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [devices, setDevices] = useState<MapDevice[]>([]);
 
   const selected = live.alerts.find((alert) => alert.id === selectedId) ?? (extraAlert?.id === selectedId ? extraAlert : null);
+  const active = live.alerts.filter(isActive);
+  const shown = filter === 'active' ? active : live.alerts;
 
   // A selected alert that dropped out of the list (older than the latest 50) is loaded by id.
   useEffect(() => {
@@ -41,35 +61,34 @@ export function Dashboard() {
     };
   }, [selectedId, live.alerts]);
 
+  const closeDetail = useCallback(() => setSelectedId(null), []);
   const reloadSelected = useCallback(() => {
     void live.reload();
   }, [live]);
 
   return (
-    <div className="app">
+    <div className="app app-fixed app-sheet">
       <TopBar>
-        <span className="sim-badge">
-          <FlaskConical size={14} aria-hidden="true" />
-          Данные датчиков и сценарий — симуляция
-        </span>
         <LiveIndicator state={live.sseState} lastUpdateAt={live.lastUpdateAt} />
-        <ScenarioButton />
+        <ScenarioButton scenario={scenario} />
       </TopBar>
 
-      <main className="main">
+      <main className="main main-sheet">
         <div className="map-col">
           <MapView
             alerts={live.alerts}
             selectedId={selectedId}
             onSelect={setSelectedId}
-            subscribeReadings={live.subscribeReadings}
+            onDevices={setDevices}
+            detailOpen={selected !== null}
           />
+          <StationsPanel devices={devices} subscribeReadings={live.subscribeReadings} />
           {selected && (
             <aside className="detail-overlay" aria-label="Карточка тревоги">
               <AlertDetail
                 key={selected.id}
                 alert={selected}
-                onClose={() => setSelectedId(null)}
+                onClose={closeDetail}
                 onUpdated={(alert) => {
                   live.applyAlert(alert);
                   if (extraAlert?.id === alert.id) setExtraAlert(alert);
@@ -79,19 +98,55 @@ export function Dashboard() {
             </aside>
           )}
         </div>
-        <section className="side" aria-labelledby="feed-title">
-          <h2 className="panel-title" id="feed-title" style={{ margin: 0 }}>
-            Лента тревог
-            <span className="num" aria-hidden="true">
-              {live.alerts.length}
-            </span>
-          </h2>
+
+        <section className="side" aria-labelledby="feed-title" data-open={sheetOpen}>
+          <button
+            type="button"
+            className="sheet-handle"
+            aria-expanded={sheetOpen}
+            aria-controls="alert-feed"
+            onClick={() => setSheetOpen((open) => !open)}
+          >
+            <span className="sheet-grip" aria-hidden="true" />
+            <span className="sr-only">{sheetOpen ? 'Свернуть ленту тревог' : 'Развернуть ленту тревог'}</span>
+          </button>
+          <header className="side-head">
+            {/* On a phone the whole title row toggles the sheet; the handle above is the keyboard control. */}
+            <div className="side-head-row" onClick={() => setSheetOpen((open) => !open)}>
+              <h2 className="side-title" id="feed-title">
+                Лента тревог
+              </h2>
+              <span className="tally" aria-label="Активные тревоги по серьёзности">
+                {TALLY.map(({ severity, Icon }) => {
+                  const count = active.filter((alert) => alert.severity === severity).length;
+                  return (
+                    <span key={severity} className="tally-item" data-severity={severity} data-on={count > 0}>
+                      <Icon size={15} aria-hidden="true" />
+                      <span className="sr-only">{SEVERITY_LABEL[severity]}:</span>
+                      <span className="num">{count}</span>
+                    </span>
+                  );
+                })}
+              </span>
+            </div>
+            <div className="seg" role="group" aria-label="Какие тревоги показывать">
+              <button type="button" aria-pressed={filter === 'active'} onClick={() => setFilter('active')}>
+                Активные <span className="num">{active.length}</span>
+              </button>
+              <button type="button" aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>
+                Все <span className="num">{live.alerts.length}</span>
+              </button>
+            </div>
+          </header>
+          <ScenarioProgress scenario={scenario} />
           <AlertFeed
-            alerts={live.alerts}
+            alerts={shown}
+            hiddenCount={live.alerts.length - shown.length}
             loadState={live.loadState}
             selectedId={selectedId}
             freshIds={live.freshIds}
             onSelect={setSelectedId}
+            onShowAll={() => setFilter('all')}
             onRetry={() => void live.reload()}
           />
         </section>

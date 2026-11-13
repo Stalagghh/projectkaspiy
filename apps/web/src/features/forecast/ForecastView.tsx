@@ -13,7 +13,7 @@ import {
   Wind,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
 
 import { useNow } from '@/lib/useNow';
 
@@ -25,14 +25,12 @@ import {
   PRESENCE_CLASSES,
   PRESENCE_RAMP,
 } from './schema';
-import { formatAsOf, formatDayLong, formatDayShort, formatMoscow, formatPercent } from './format';
+import { formatAsOf, formatDayLong, formatDayMonth, formatMoscow, formatPercent, formatWeekday } from './format';
 
 const ForecastMap = dynamic(() => import('./ForecastMap'), {
   ssr: false,
   loading: () => (
-    <div className="flex h-full items-center justify-center text-sm text-[var(--muted)]">
-      Загрузка карты…
-    </div>
+    <p className="status-line" style={{ height: '100%', justifyContent: 'center', color: 'var(--muted)' }}>Загрузка карты…</p>
   ),
 });
 
@@ -100,62 +98,59 @@ export function ForecastView() {
 
   if (state.status === 'loading') {
     return (
-      <Shell>
-        <div className="flex h-full min-h-[50vh] items-center justify-center gap-2 text-[var(--muted)]" role="status">
-          <LoaderCircle className="size-5 animate-spin" aria-hidden="true" />
+      <main className="center-state">
+        <p className="status-line" role="status" style={{ color: 'var(--muted)' }}>
+          <LoaderCircle size={20} className="spin" aria-hidden="true" />
           Загрузка прогноза…
-        </div>
-      </Shell>
+        </p>
+      </main>
     );
   }
 
   if (state.status === 'empty') {
     return (
-      <Shell>
-        <div
-          data-testid="forecast-empty"
-          className="mx-auto mt-16 max-w-md rounded-lg border border-white/10 bg-[var(--surface)] p-6 text-center"
-        >
-          <Info className="mx-auto size-8 text-[var(--info)]" aria-hidden="true" />
-          <h2 className="mt-3 text-lg font-semibold">Прогноз ещё не рассчитан</h2>
-          <p className="mt-2 text-sm text-[var(--muted)]">
-            Карта появится после первого расчёта модели присутствия тюленя. Расчёт запускается по
-            расписанию раз в 6 часов.
+      <main className="center-state">
+        <div className="center-card" data-testid="forecast-empty">
+          <Info size={30} style={{ color: 'var(--info)' }} aria-hidden="true" />
+          <h2>Прогноз ещё не рассчитан</h2>
+          <p>
+            Карта появится после первого расчёта модели присутствия тюленя. Расчёт запускается по расписанию раз в
+            6 часов.
           </p>
           <button
             type="button"
+            className="btn"
             onClick={() => {
               setState({ status: 'loading' });
               void load();
             }}
-            className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-md border border-white/20 px-4 text-sm hover:bg-[var(--raised)] focus-visible:outline-2 focus-visible:outline-[var(--accent)]"
           >
-            <RotateCcw className="size-4" aria-hidden="true" /> Проверить снова
+            <RotateCcw size={16} aria-hidden="true" /> Проверить снова
           </button>
         </div>
-      </Shell>
+      </main>
     );
   }
 
   if (state.status === 'error') {
     return (
-      <Shell>
-        <div role="alert" className="mx-auto mt-16 max-w-md rounded-lg border border-[var(--critical)]/50 bg-[var(--surface)] p-6 text-center">
-          <TriangleExclamationPoint className="mx-auto size-8 text-[var(--critical)]" aria-hidden="true" />
-          <h2 className="mt-3 text-lg font-semibold">Не удалось загрузить прогноз</h2>
-          <p className="mt-2 text-sm text-[var(--muted)]">{state.message}</p>
+      <main className="center-state">
+        <div className="center-card" role="alert">
+          <TriangleExclamationPoint size={30} style={{ color: 'var(--critical)' }} aria-hidden="true" />
+          <h2>Не удалось загрузить прогноз</h2>
+          <p>{state.message}</p>
           <button
             type="button"
+            className="btn"
             onClick={() => {
               setState({ status: 'loading' });
               void load();
             }}
-            className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-md border border-white/20 px-4 text-sm hover:bg-[var(--raised)] focus-visible:outline-2 focus-visible:outline-[var(--accent)]"
           >
-            <RotateCcw className="size-4" aria-hidden="true" /> Повторить
+            <RotateCcw size={16} aria-hidden="true" /> Повторить
           </button>
         </div>
-      </Shell>
+      </main>
     );
   }
 
@@ -169,43 +164,56 @@ export function ForecastView() {
     .slice(0, 5);
 
   return (
-    <Shell>
-      <div className="flex flex-col gap-3 lg:grid lg:h-full lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_400px]">
-        <div className="relative h-[55vh] min-h-[320px] overflow-hidden rounded-lg border border-white/10 bg-[var(--surface)] lg:h-full">
+    <main className="main main-stack">
+      <div className="map-col">
+        <div className="map-stage">
           <ForecastMap cells={data.cells} selectedId={selectedId} onSelect={setSelectedId} />
+        </div>
+        <div className="map-top">
+          <span className="chip chip-sim map-sim">
+            <FlaskConical size={14} aria-hidden="true" />
+            Упрощённая модель — не наблюдения
+          </span>
           {pendingDay ? (
-            <div role="status" className="absolute left-2 top-2 flex items-center gap-2 rounded bg-[var(--surface)]/90 px-2 py-1 text-xs">
-              <LoaderCircle className="size-3.5 animate-spin" aria-hidden="true" /> Загрузка дня…
-            </div>
+            <span className="chip map-sim" role="status">
+              <LoaderCircle size={14} className="spin" aria-hidden="true" /> Загрузка дня…
+            </span>
           ) : null}
         </div>
+        <Legend />
+      </div>
 
-        <aside className="flex flex-col gap-4 lg:min-h-0 lg:overflow-y-auto lg:pr-1" aria-label="Пояснение к прогнозу">
-          <header>
-            <h1 className="text-xl font-semibold">Прогноз присутствия каспийского тюленя</h1>
-            <p className="mt-2 flex items-start gap-2 rounded-md border border-[var(--warning)]/60 bg-[var(--warning)]/10 px-3 py-2 text-sm">
-              <FlaskConical className="mt-0.5 size-4 shrink-0 text-[var(--warning)]" aria-hidden="true" />
+      <aside className="panel" aria-label="Пояснение к прогнозу">
+        <div className="panel-scroll">
+          <header className="section">
+            <div>
+              <h1 className="page-title">Прогноз присутствия каспийского тюленя</h1>
+              <p className="page-lead">Индекс присутствия по ячейкам акватории на 7 дней вперёд.</p>
+            </div>
+            <p className="note note-sim">
+              <FlaskConical size={16} aria-hidden="true" />
               Упрощённая модель на допущениях — требует проверки экологами
             </p>
             {stale ? (
-              <p className="mt-2 flex items-start gap-2 rounded-md border border-[var(--critical)]/60 px-3 py-2 text-sm">
-                <TriangleExclamationPoint className="mt-0.5 size-4 shrink-0 text-[var(--critical)]" aria-hidden="true" />
+              <p className="note note-critical">
+                <TriangleExclamationPoint size={16} aria-hidden="true" />
                 Данные устарели: прогноз рассчитан {formatMoscow(run.issuedAt)}.
               </p>
             ) : null}
           </header>
 
-          <section aria-labelledby="forecast-days-title">
-            <h2 id="forecast-days-title" className="text-sm font-medium text-[var(--muted)]">
+          <section className="section" aria-labelledby="forecast-days-title">
+            <h2 id="forecast-days-title" className="eyebrow">
               День прогноза
             </h2>
-            <div role="group" aria-label="День прогноза" className="mt-2 grid grid-cols-4 gap-1.5 sm:grid-cols-7 lg:grid-cols-4">
+            <div role="group" aria-label="День прогноза" className="days">
               {run.dates.map((date, index) => {
                 const pressed = date === (pendingDay ?? day);
                 return (
                   <button
                     key={date}
                     type="button"
+                    className="day"
                     data-testid="forecast-day"
                     data-date={date}
                     aria-pressed={pressed}
@@ -216,108 +224,101 @@ export function ForecastView() {
                         void load(date);
                       }
                     }}
-                    className={`min-h-11 rounded-md border px-2 text-sm tabular-nums focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${
-                      pressed
-                        ? 'border-[var(--brand)] bg-[var(--brand)] font-semibold text-[var(--bg)]'
-                        : 'border-white/15 bg-[var(--surface)] hover:bg-[var(--raised)]'
-                    }`}
                   >
-                    {formatDayShort(date)}
+                    <span className="day-week">{formatWeekday(date)}</span>
+                    <span className="day-date num">{formatDayMonth(date)}</span>
                   </button>
                 );
               })}
             </div>
           </section>
 
-          <section data-testid="forecast-summary" aria-labelledby="forecast-summary-title" className="rounded-lg border border-white/10 bg-[var(--surface)] p-3">
-            <h2 id="forecast-summary-title" className="text-sm font-medium text-[var(--muted)]">
+          <section className="section" data-testid="forecast-summary" aria-labelledby="forecast-summary-title">
+            <h2 id="forecast-summary-title" className="eyebrow">
               Пояснение на {formatDayLong(day)}
             </h2>
-            <p className="mt-1 text-sm leading-relaxed">
-              {summary?.summaryRu ?? 'Пояснение для этого дня не сохранено в прогоне.'}
-            </p>
+            <p className="section-text">{summary?.summaryRu ?? 'Пояснение для этого дня не сохранено в прогоне.'}</p>
             {data.cells.features.length === 0 ? (
-              <p className="mt-2 text-sm text-[var(--warning)]">Для этого дня нет ячеек прогноза.</p>
+              <p className="note note-warning">
+                <TriangleExclamationPoint size={16} aria-hidden="true" />
+                Для этого дня нет ячеек прогноза.
+              </p>
             ) : null}
           </section>
 
-          <Legend />
+          <section className="section" data-testid="forecast-sources" aria-labelledby="forecast-sources-title">
+            <h2 id="forecast-sources-title" className="eyebrow">
+              Условия в этот день и их источники
+            </h2>
+            {hydrology ? (
+              <SourceBadges hydrology={hydrology} />
+            ) : (
+              <p className="note note-warning">
+                <TriangleExclamationPoint size={16} aria-hidden="true" />
+                Источники входных данных для этого дня не указаны в прогоне.
+              </p>
+            )}
+          </section>
 
           {topCells.length > 0 ? (
-            <section aria-labelledby="forecast-top-title">
-              <h2 id="forecast-top-title" className="text-sm font-medium text-[var(--muted)]">
-                Ячейки с наибольшей вероятностью
+            <section className="section" aria-labelledby="forecast-top-title">
+              <h2 id="forecast-top-title" className="eyebrow">
+                Где индекс выше всего
               </h2>
-              <ol className="mt-2 space-y-1">
+              <ol className="rank">
                 {topCells.map((cell) => (
                   <li key={cell.id}>
                     <button
                       type="button"
+                      className="rank-item"
+                      style={{ '--share': `${Math.round(cell.properties.presence * 100)}%` } as CSSProperties}
                       onClick={() => setSelectedId(cell.id)}
                       aria-pressed={selectedId === cell.id}
-                      className={`flex min-h-11 w-full items-center justify-between rounded-md border px-3 text-left text-sm focus-visible:outline-2 focus-visible:outline-[var(--accent)] ${
-                        selectedId === cell.id ? 'border-[var(--accent)]' : 'border-white/10 hover:bg-[var(--raised)]'
-                      }`}
                     >
                       <span>Ячейка №{cell.id}</span>
-                      <span className="font-mono tabular-nums">
+                      <span className="num">
                         {formatPercent(cell.properties.presence)} · {LEVEL_RU[cell.properties.level]}
                       </span>
                     </button>
                   </li>
                 ))}
               </ol>
+              <p className="caption">Нажмите на строку или на ячейку карты — покажем, какие факторы дали такой индекс.</p>
             </section>
           ) : null}
 
-          <section data-testid="forecast-sources" aria-labelledby="forecast-sources-title">
-            <h2 id="forecast-sources-title" className="text-sm font-medium text-[var(--muted)]">
-              Источники данных на этот день
-            </h2>
-            {hydrology ? (
-              <SourceBadges hydrology={hydrology} />
-            ) : (
-              <p className="mt-1 text-sm text-[var(--warning)]">
-                Источники входных данных для этого дня не указаны в прогоне.
-              </p>
-            )}
-          </section>
-
-          <section aria-labelledby="forecast-model-title" className="text-sm">
-            <h2 id="forecast-model-title" className="text-sm font-medium text-[var(--muted)]">
+          <section className="section" aria-labelledby="forecast-model-title">
+            <h2 id="forecast-model-title" className="eyebrow">
               Модель
             </h2>
-            <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
-              <dt className="text-[var(--muted)]">Название</dt>
+            <dl className="kv">
+              <dt>Название</dt>
               <dd>
-                {run.modelName} <span className="font-mono">v{run.modelVersion}</span>
+                {run.modelName} <span className="mono">v{run.modelVersion}</span>
               </dd>
-              <dt className="text-[var(--muted)]">Рассчитан</dt>
-              <dd className="tabular-nums">{formatMoscow(run.issuedAt)}</dd>
-              <dt className="text-[var(--muted)]">Допущения</dt>
-              <dd className="font-mono text-xs leading-5">
+              <dt>Рассчитан</dt>
+              <dd className="num">{formatMoscow(run.issuedAt)}</dd>
+              <dt>Допущения</dt>
+              <dd className="mono" style={{ fontSize: 12, lineHeight: 1.6 }}>
                 {run.assumptions.length > 0 ? run.assumptions.join(', ') : 'не указаны'}
               </dd>
             </dl>
             {data.warnings.length > 0 ? (
-              <p className="mt-2 text-xs text-[var(--warning)]">
+              <p className="note note-warning">
+                <TriangleExclamationPoint size={16} aria-hidden="true" />
                 Часть данных прогона в неожиданном формате и не показана: {data.warnings.join(', ')}.
               </p>
             ) : null}
           </section>
 
-          <p className="text-xs leading-5 text-[var(--muted)]">
-            Погода: Open-Meteo.com (CC BY 4.0) · SST: NOAA OISST v2.1 · Карта: © участники
-            OpenStreetMap (ODbL), Protomaps
+          <p className="footnote">
+            Погода: Open-Meteo.com (CC BY 4.0) · Температура воды: NOAA OISST v2.1 · Карта: © участники OpenStreetMap
+            (ODbL), Protomaps
           </p>
-        </aside>
-      </div>
-    </Shell>
+        </div>
+      </aside>
+    </main>
   );
-}
-
-function Shell({ children }: { children: ReactNode }) {
-  return <div className="p-3 lg:h-[calc(100dvh-4rem)] lg:min-h-[560px]">{children}</div>;
 }
 
 function Legend() {
@@ -325,22 +326,21 @@ function Legend() {
     (stop) => `color-mix(in srgb, ${stop.color} ${Math.round(stop.opacity * 100)}%, var(--surface)) ${stop.at * 100}%`,
   ).join(', ');
   return (
-    <section aria-labelledby="forecast-legend-title">
-      <h2 id="forecast-legend-title" className="text-sm font-medium text-[var(--muted)]">
-        Индекс присутствия (0–1)
+    <section className="map-panel map-legend-box" aria-labelledby="forecast-legend-title">
+      <h2 id="forecast-legend-title" className="eyebrow">
+        Индекс присутствия, 0–1
       </h2>
-      <div className="mt-2 h-3 rounded" style={{ background: `linear-gradient(to right, ${gradient})` }} aria-hidden="true" />
-      <ul className="mt-2 grid grid-cols-3 gap-2 text-xs">
+      <div className="ramp" style={{ background: `linear-gradient(to right, ${gradient})` }} aria-hidden="true" />
+      <ul className="ramp-scale">
         {PRESENCE_CLASSES.map((item) => (
-          <li key={item.level} className="flex flex-col">
-            <span className="font-mono tabular-nums">
+          <li key={item.level}>
+            <span className="num">
               {item.from.toLocaleString('ru-RU')}–{item.to.toLocaleString('ru-RU')}
             </span>
             <span>{item.labelRu}</span>
           </li>
         ))}
       </ul>
-      <p className="mt-1 text-xs text-[var(--muted)]">Нажмите на ячейку, чтобы увидеть вероятность и факторы.</p>
     </section>
   );
 }
@@ -353,32 +353,23 @@ const SOURCE_ROWS = [
 
 function SourceBadges({ hydrology }: { hydrology: HydrologyDay }) {
   return (
-    <ul className="mt-2 space-y-1.5">
+    <ul className="sources">
       {SOURCE_ROWS.map(({ key, label, Icon, value }) => {
         const source = hydrology.sources[key];
         const real = source.kind === 'real';
         return (
-          <li
-            key={key}
-            className={`flex items-start gap-2 rounded-md border px-3 py-2 text-sm ${
-              real ? 'border-[var(--brand)]/60' : 'border-[var(--warning)]/60'
-            }`}
-          >
-            <Icon className="mt-0.5 size-4 shrink-0 text-[var(--muted)]" aria-hidden="true" />
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-baseline justify-between gap-x-2">
-                <span className="font-medium">{label}</span>
-                <span className="font-mono text-xs tabular-nums">{value(hydrology)}</span>
-              </div>
-              <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-[var(--muted)]">
-                <span className={`inline-flex items-center gap-1 ${real ? 'text-[var(--brand)]' : 'text-[var(--warning)]'}`}>
-                  {real ? <CircleCheck className="size-3.5" aria-hidden="true" /> : <FlaskConical className="size-3.5" aria-hidden="true" />}
-                  {real ? 'реальные данные' : 'синтетика'}
-                </span>
-                <span>{source.name}</span>
-                <span className="tabular-nums">на {formatAsOf(source.asOf)}</span>
-              </div>
-            </div>
+          <li key={key} className="source" data-kind={real ? 'real' : 'synthetic'}>
+            <Icon size={17} aria-hidden="true" />
+            <span>{label}</span>
+            <span className="source-value num">{value(hydrology)}</span>
+            <span className="source-meta">
+              <span className="source-kind">
+                {real ? <CircleCheck size={13} aria-hidden="true" /> : <FlaskConical size={13} aria-hidden="true" />}
+                {real ? 'реальные данные' : 'синтетика'}
+              </span>
+              <span>{source.name}</span>
+              <span className="num">на {formatAsOf(source.asOf)}</span>
+            </span>
           </li>
         );
       })}

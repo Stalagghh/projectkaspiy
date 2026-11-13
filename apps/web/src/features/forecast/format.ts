@@ -13,6 +13,8 @@ const dayFormat = new Intl.DateTimeFormat('ru-RU', {
   day: '2-digit',
   month: '2-digit',
 });
+const weekdayFormat = new Intl.DateTimeFormat('ru-RU', { timeZone: 'UTC', weekday: 'short' });
+const dayMonthFormat = new Intl.DateTimeFormat('ru-RU', { timeZone: 'UTC', day: '2-digit', month: '2-digit' });
 const longDayFormat = new Intl.DateTimeFormat('ru-RU', {
   timeZone: 'UTC',
   weekday: 'long',
@@ -41,9 +43,15 @@ export const formatNumber = (value: number): string => numberFormat.format(value
 export const formatContribution = (value: number): string =>
   contributionFormat.format(value).replace('-', '−');
 
-export const formatPercent = (share: number): string => `${Math.round(share * 100)}\u00a0%`;
+export const formatPercent = (share: number): string => `${Math.round(share * 100)}\u202f%`;
 
 export const formatDayShort = (isoDate: string): string => dayFormat.format(utcDay(isoDate));
+
+/** "пт" */
+export const formatWeekday = (isoDate: string): string => weekdayFormat.format(utcDay(isoDate));
+
+/** "13.11" */
+export const formatDayMonth = (isoDate: string): string => dayMonthFormat.format(utcDay(isoDate));
 
 export const formatDayLong = (isoDate: string): string => longDayFormat.format(utcDay(isoDate));
 

@@ -88,12 +88,12 @@ export const PRESENCE_CLASSES = [
   { level: 'high', from: 0.66, to: 1, labelRu: 'высокая' },
 ] as const satisfies ReadonlyArray<{ level: ForecastLevel; from: number; to: number; labelRu: string }>;
 
-/** Colour stops of the presence ramp: transparent navy, teal, sand, international orange. */
+/** Colour stops of the presence ramp: transparent navy, teal, pale yellow, international orange. */
 export const PRESENCE_RAMP = [
   { at: 0, color: '#12263A', opacity: 0.12 },
-  { at: 0.33, color: '#1FA39A', opacity: 0.55 },
-  { at: 0.66, color: '#CDBB94', opacity: 0.7 },
-  { at: 1, color: '#FF6A13', opacity: 0.78 },
+  { at: 0.33, color: '#1FA39A', opacity: 0.5 },
+  { at: 0.66, color: '#E3C766', opacity: 0.62 },
+  { at: 1, color: '#FF6A13', opacity: 0.8 },
 ] as const;
 
 export const LEVEL_RU: Record<ForecastLevel, string> = {

@@ -5,7 +5,6 @@
 // the cells are still drawn on a plain background.
 import 'maplibre-gl/dist/maplibre-gl.css';
 
-import { layers, namedFlavor } from '@protomaps/basemaps';
 import {
   type GeoJSONSource,
   type LngLatBoundsLike,
@@ -18,6 +17,8 @@ import {
 import { Protocol } from 'pmtiles';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+
+import { basemapLayers, MAP_ATTRIBUTION } from '@/features/map/basemap';
 
 import { CellDetails } from './CellDetails';
 import styles from './forecast.module.css';
@@ -95,9 +96,7 @@ export default function ForecastMap({ cells, selectedId, onSelect }: Props) {
     if (!container) return;
     setupMapLibre();
 
-    const basemap = layers('protomaps', namedFlavor('dark'), { lang: 'ru' }).filter(
-      (layer) => layer.type !== 'symbol',
-    );
+    const basemap = basemapLayers();
     const map = new MapLibreMap({
       container,
       center: [47.65, 43.75],
@@ -109,7 +108,7 @@ export default function ForecastMap({ cells, selectedId, onSelect }: Props) {
           protomaps: {
             type: 'vector',
             url: `pmtiles://${window.location.origin}${BASEMAP_PATH}`,
-            attribution: '© участники OpenStreetMap (ODbL), Protomaps',
+            attribution: MAP_ATTRIBUTION,
           },
           [CELLS_SOURCE]: {
             type: 'geojson',
@@ -134,7 +133,7 @@ export default function ForecastMap({ cells, selectedId, onSelect }: Props) {
                 0.33,
                 '#1FA39A',
                 0.66,
-                '#CDBB94',
+                '#E3C766',
                 1,
                 '#FF6A13',
               ],
@@ -145,11 +144,11 @@ export default function ForecastMap({ cells, selectedId, onSelect }: Props) {
                 0,
                 0.12,
                 0.33,
-                0.55,
+                0.5,
                 0.66,
-                0.7,
+                0.62,
                 1,
-                0.78,
+                0.8,
               ],
             },
           },
@@ -157,7 +156,7 @@ export default function ForecastMap({ cells, selectedId, onSelect }: Props) {
             id: 'forecast-cells-outline',
             type: 'line',
             source: CELLS_SOURCE,
-            paint: { 'line-color': '#E9EEF1', 'line-opacity': 0.12, 'line-width': 0.5 },
+            paint: { 'line-color': '#050D16', 'line-opacity': 0.55, 'line-width': 1 },
           },
           {
             id: SELECTED_LAYER,
@@ -169,7 +168,7 @@ export default function ForecastMap({ cells, selectedId, onSelect }: Props) {
         ],
       },
     });
-    map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
+    map.addControl(new NavigationControl({ showCompass: false }), 'bottom-right');
 
     map.on('error', (event) => {
       const sourceId = (event as { sourceId?: string }).sourceId;
@@ -260,9 +259,7 @@ export default function ForecastMap({ cells, selectedId, onSelect }: Props) {
         className="h-full w-full"
       />
       {basemapMissing ? (
-        <p className="pointer-events-none absolute bottom-2 left-2 rounded bg-[var(--surface)]/90 px-2 py-1 text-xs text-[var(--muted)]">
-          Подложка карты недоступна — показаны только ячейки прогноза
-        </p>
+        <p className="map-message map-panel">Подложка карты недоступна — показаны только ячейки прогноза</p>
       ) : null}
       {popupNode && selectedCell ? createPortal(<CellDetails cell={selectedCell} />, popupNode) : null}
     </div>
